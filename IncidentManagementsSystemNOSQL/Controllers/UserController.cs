@@ -1,23 +1,24 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
+using IncidentManagementsSystemNOSQL.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
     public class UserController : Controller
     {
-        private readonly IUserRepository _userRepository;
+        private readonly IUserService _userService;
 
-        public UserController(IUserRepository userRepository)
+        public UserController(IUserService userService)
         {
-            _userRepository = userRepository;
+            _userService = userService;
         }
 
         public async Task<IActionResult> Index()
         {
             try
             {
-                var users = await _userRepository.GetAll();
+                var users = await _userService.GetAllUsers();
                 return View(users);
             }
             catch (Exception ex)
@@ -31,7 +32,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                var user = await _userRepository.GetById(id);
+                var user = await _userService.GetUserById(id);
                 if (user == null) return NotFound();
                 return View(user);
             }
@@ -56,8 +57,8 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             try
             {
                 user.IsActive = true;
-                user.MustChangePassword = true; 
-                await _userRepository.AddUser(user);
+                user.MustChangePassword = true;
+                await _userService.AddUser(user);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -72,7 +73,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                var user = await _userRepository.GetById(id);
+                var user = await _userService.GetUserById(id);
                 if (user == null) return NotFound();
                 return View(user);
             }
@@ -92,7 +93,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
             try
             {
-                await _userRepository.UpdateUser(user);
+                await _userService.UpdateUser(id,user);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -107,7 +108,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                var user = await _userRepository.GetById(id);
+                var user = await _userService.GetUserById(id);
                 if (user == null) return NotFound();
                 return View(user);
             }
@@ -124,7 +125,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                await _userRepository.DeleteById(id);
+                await _userService.DeleteUser(id);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)

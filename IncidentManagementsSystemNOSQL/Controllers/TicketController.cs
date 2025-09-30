@@ -1,23 +1,24 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
+using IncidentManagementsSystemNOSQL.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
     public class TicketController : Controller
     {
-        private readonly ITicketRepository _ticketRepository;
+        private readonly ITicketService _ticketService;
 
-        public TicketController(ITicketRepository ticketRepository)
+        public TicketController(ITicketService ticketService)
         {
-            _ticketRepository = ticketRepository;
+            _ticketService = ticketService;
         }
 
         public async Task<IActionResult> Index()
         {
             try
             {
-                var tickets = await _ticketRepository.GetAll();
+                var tickets = await _ticketService.GetAllTickets();
                 return View(tickets);
             }
             catch (Exception ex)
@@ -32,7 +33,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                var ticket = await _ticketRepository.GetById(id);
+                var ticket = await _ticketService.GetTicketById(id);
                 if (ticket == null) return NotFound();
                 return View(ticket);
             }
@@ -59,7 +60,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 ticket.DateCreated = DateTime.UtcNow;
                 ticket.Status = Enums.TicketStatus.open;
 
-                await _ticketRepository.AddTicket(ticket);
+                await _ticketService.AddTicket(ticket);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -74,7 +75,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                var ticket = await _ticketRepository.GetById(id);
+                var ticket = await _ticketService.GetTicketById(id);
                 if (ticket == null) return NotFound();
                 return View(ticket);
             }
@@ -94,7 +95,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
             try
             {
-                await _ticketRepository.UpdateTicket(ticket);
+                await _ticketService.UpdateTicket(id,ticket);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -109,7 +110,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                var ticket = await _ticketRepository.GetById(id);
+                var ticket = await _ticketService.GetTicketById(id);
                 if (ticket == null) return NotFound();
                 return View(ticket);
             }
@@ -126,7 +127,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                await _ticketRepository.DeleteById(id);
+                await _ticketService.DeleteTicket(id);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)

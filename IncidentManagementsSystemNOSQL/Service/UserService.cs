@@ -65,7 +65,7 @@ namespace IncidentManagementsSystemNOSQL.Service
         }
 
         // Add a new user
-        public async Task AddUserAsync(User user)
+        public async Task AddUser(User user)
         {
             try
             {
