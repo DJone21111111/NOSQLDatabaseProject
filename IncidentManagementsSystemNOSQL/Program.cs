@@ -1,36 +1,39 @@
-namespace IncidentManagementsSystemNOSQL
+using IncidentManagementsSystemNOSQL.Models;
+using Microsoft.Extensions.Options;
+using MongoDB.Driver;
+
+var builder = WebApplication.CreateBuilder(args);
+
+
+builder.Services.Configure<MongoDbSettings>(
+builder.Configuration.GetSection("MongoDbSettings"));
+
+
+builder.Services.AddSingleton<IMongoClient>(sp =>
 {
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
+    var cs = builder.Configuration.GetValue<string>("MongoDbSettings:ConnectionString");
+    return new MongoClient(cs);
+});
 
-            // Add services to the container.
-            builder.Services.AddControllersWithViews();
 
-            var app = builder.Build();
+builder.Services.AddScoped<IMongoDatabase>(sp =>
+{
+    var settings = sp.GetRequiredService<IOptions<MongoDbSettings>>().Value;
+    var client = sp.GetRequiredService<IMongoClient>();
+    return client.GetDatabase(settings.DatabaseName);
+});
 
-            // Configure the HTTP request pipeline.
-            if (!app.Environment.IsDevelopment())
-            {
-                app.UseExceptionHandler("/Home/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
-            }
+builder.Services.AddControllersWithViews();
 
-            app.UseHttpsRedirection();
-            app.UseStaticFiles();
+var app = builder.Build();
+if (!app.Environment.IsDevelopment())
+    app.UseExceptionHandler("/Home/Error");
 
-            app.UseRouting();
+app.UseStaticFiles();
+app.UseRouting();
 
-            app.UseAuthorization();
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
-            app.MapControllerRoute(
-                name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}");
-
-            app.Run();
-        }
-    }
-}
+app.Run();
