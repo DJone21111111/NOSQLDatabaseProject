@@ -4,21 +4,25 @@ namespace IncidentManagementsSystemNOSQL.Repositories
 {
     public interface ITicketRepository
     {
-        Task<Ticket?> GetById(string id);
-        Task<List<Ticket>> GetByUserId(string userId);
-        Task<List<Ticket>> GetAll();
-        Task<List<Ticket>> GetByStatus(Enums.TicketStatus status);
+        // READ Operations
+        Ticket? GetById(string id);
+        List<Ticket> GetByUserId(string userId);
+        List<Ticket> GetAll();
 
-        // Mutations
-        Task AddTicket(Ticket ticket);
-        Task UpdateTicket(Ticket ticket);
-        Task DeleteById(string id);
+        List<Ticket> GetByStatus(Enums.TicketStatus status);
 
-        // Dashboard/aggregations
-        Task<Dictionary<Enums.TicketStatus, int>> GetTicketCountsByStatus();
-        Task<Dictionary<string, int>> GetTicketCountsByDepartment();
+        // Might need to filter by time range in the future. We are not using it for now.
+        List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);
 
-        // Database preparation
-        Task EnsureIndexesAsync(CancellationToken ct = default);
+        void AddTicket(Ticket ticket);
+        void UpdateTicket(string id, Ticket updated);
+        void DeleteById(string id);
+
+        // AGGREGATION Operations
+        Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus();
+        Dictionary<string, int> GetTicketCountsByDepartment();
+
+        // SETUP Operation
+        void EnsureIndexes();
     }
 }

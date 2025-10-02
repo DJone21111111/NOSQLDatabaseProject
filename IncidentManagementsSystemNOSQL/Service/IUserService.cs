@@ -3,13 +3,13 @@ namespace IncidentManagementsSystemNOSQL.Service
 {
     public interface IUserService
     {
-        Task<List<User>> GetAllUsers();
-        Task<User?> GetUserById(string id);
-        Task<User?> GetUserByEmployeeId(string employeeId);
-        Task<User?> GetUserByUsername(string username);
+        List<User> GetAllUsers();
+        User? GetUserById(string id);
+        User? GetUserByEmployeeId(string employeeId);
+        User? GetUserByUsername(string username);
 
-        Task AddUser (User user);
-        Task UpdateUser(string id, User updatedUser);
-        Task DeleteUser(string id);
+        void AddUser(User user);
+        void UpdateUser(string id, User updatedUser);
+        void DeleteUser(string id);
     }
 }

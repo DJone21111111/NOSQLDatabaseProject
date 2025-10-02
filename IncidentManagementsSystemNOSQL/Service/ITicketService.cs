@@ -3,13 +3,21 @@ namespace IncidentManagementsSystemNOSQL.Service
 {
     public interface ITicketService
     {
-        Task<List<Ticket>> GetAllTickets();
-        Task<Ticket?> GetTicketById(string id);
-        Task<List<Ticket>> GetTicketsByUserId(string userId);
-        Task<List<Ticket>> GetTicketsByStatus(Enums.TicketStatus status);
-        Task<List<Ticket>> GetTicketsByDateRange(DateTime startDate, DateTime endDate);
-        Task AddTicket(Ticket ticket);
-        Task UpdateTicket(string id, Ticket updatedTicket);
-        Task DeleteTicket(string id);
+        // READ Operations
+        List<Ticket> GetAll();
+        Ticket? GetById(string id);
+        List<Ticket> GetByUserId(string userId);
+        List<Ticket> GetByStatus(Enums.TicketStatus status);
+
+        List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);
+
+        // MUTATION Operations
+        void AddTicket(Ticket ticket);
+        void UpdateTicket(string id, Ticket updatedTicket);
+        void DeleteTicket(string id);
+
+        // AGGREGATION Operations
+        Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus();
+        Dictionary<string, int> GetTicketCountsByDepartment();
     }
 }

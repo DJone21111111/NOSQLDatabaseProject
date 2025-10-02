@@ -12,11 +12,11 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             _users = db.GetCollection<User>("users");
         }
 
-        public async Task<User?> GetByUsername(string username)
+        public User? GetByUsername(string username)
         {
             try
             {
-                return await _users.Find(u => u.UserName == username).FirstOrDefaultAsync();
+                return _users.Find(u => u.UserName == username).FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -24,11 +24,11 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task<User?> GetByEmployeeId(string employeeId)
+        public User? GetByEmployeeId(string employeeId)
         {
             try
             {
-                return await _users.Find(u => u.EmployeeId == employeeId).FirstOrDefaultAsync();
+                return _users.Find(u => u.EmployeeId == employeeId).FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -36,14 +36,11 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task<User> GetById(string id)
+        public User? GetById(string id)
         {
             try
             {
-                var user = await _users.Find(u => u.Id == id).FirstOrDefaultAsync();
-                if (user is null)
-                    throw new KeyNotFoundException($"User with id '{id}' not found.");
-                return user;
+                return _users.Find(u => u.Id == id).FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -51,13 +48,13 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task<List<User>> GetAll()
+        public List<User> GetAll()
         {
             try
             {
-                return await _users.Find(FilterDefinition<User>.Empty)
-                                   .SortBy(u => u.EmployeeId)
-                                   .ToListAsync();
+                return _users.Find(FilterDefinition<User>.Empty)
+                                       .SortBy(u => u.EmployeeId)
+                                       .ToList();
             }
             catch (Exception ex)
             {
@@ -65,12 +62,28 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-
-        public async Task AddUser(User user)
+        public void SetPasswordHash(string id, string newPasswordHash)
         {
             try
             {
-                await _users.InsertOneAsync(user);
+                var filter = Builders<User>.Filter.Eq(u => u.Id, id);
+                var update = Builders<User>.Update
+                    .Set(u => u.PasswordHash, newPasswordHash)
+                    .Set(u => u.UpdatedAt, DateTime.UtcNow); 
+
+                _users.UpdateOne(filter, update);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error while setting password hash for user '{id}'", ex);
+            }
+        }
+
+        public void AddUser(User user)
+        {
+            try
+            {
+                _users.InsertOne(user);
             }
             catch (Exception ex)
             {
@@ -78,11 +91,11 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task UpdateUser(User user)
+        public void UpdateUser(User user)
         {
             try
             {
-                await _users.ReplaceOneAsync(u => u.Id == user.Id, user);
+                _users.ReplaceOne(u => u.Id == user.Id, user);
             }
             catch (Exception ex)
             {
@@ -90,11 +103,11 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task DeleteById(string id)
+        public void DeleteById(string id)
         {
             try
             {
-                await _users.DeleteOneAsync(u => u.Id == id);
+                _users.DeleteOne(u => u.Id == id);
             }
             catch (Exception ex)
             {
@@ -102,8 +115,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        // Makes query faster and ensures uniqueness
-        public async Task EnsureIndexes(CancellationToken ct = default)
+        public void EnsureIndexes()
         {
             try
             {
@@ -122,7 +134,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
                         new CreateIndexOptions { Unique = true, Name = "ux_username" }),
                 };
 
-                await _users.Indexes.CreateManyAsync(models, ct);
+                _users.Indexes.CreateManyAsync(models).Wait();
             }
             catch (Exception ex)
             {

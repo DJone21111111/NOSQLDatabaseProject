@@ -3,7 +3,7 @@ using IncidentManagementsSystemNOSQL.Repositories;
 
 namespace IncidentManagementsSystemNOSQL.Service
 {
-    public class UserService
+    public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
 
@@ -12,12 +12,11 @@ namespace IncidentManagementsSystemNOSQL.Service
             _userRepository = userRepository;
         }
 
-        // Get all users
-        public async Task<List<User>> GetAllUsers()
+        public List<User> GetAllUsers()
         {
             try
             {
-                return await _userRepository.GetAll();
+                return _userRepository.GetAll();
             }
             catch (Exception ex)
             {
@@ -25,12 +24,11 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        // Get user by ID
-        public async Task<User?> GetUserById(string id)
+        public User? GetUserById(string id)
         {
             try
             {
-                return await _userRepository.GetById(id);
+                return _userRepository.GetById(id);
             }
             catch (Exception ex)
             {
@@ -38,12 +36,11 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        // Get user by employeeId
-        public async Task<User?> GetUserByEmployeeId(string employeeId)
+        public User? GetUserByEmployeeId(string employeeId)
         {
             try
             {
-                return await _userRepository.GetByEmployeeId(employeeId);
+                return _userRepository.GetByEmployeeId(employeeId);
             }
             catch (Exception ex)
             {
@@ -51,12 +48,11 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        // Get user by username
-        public async Task<User?> GetUserByUsername(string username)
+        public User? GetUserByUsername(string username)
         {
             try
             {
-                return await _userRepository.GetByUsername(username);
+                return _userRepository.GetByUsername(username);
             }
             catch (Exception ex)
             {
@@ -64,14 +60,14 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        // Add a new user
-        public async Task AddUser(User user)
+        public void AddUser(User user)
         {
             try
             {
                 user.CreatedAt = DateTime.UtcNow;
                 user.UpdatedAt = DateTime.UtcNow;
-                await _userRepository.AddUser(user);
+
+                _userRepository.AddUser(user);
             }
             catch (Exception ex)
             {
@@ -79,26 +75,26 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        // Update existing user
-        public async Task UpdateUser(User user)
+        public void UpdateUser(string id, User updatedUser)
         {
             try
             {
-                user.UpdatedAt = DateTime.UtcNow;
-                await _userRepository.UpdateUser(user);
+                updatedUser.Id = id;
+                updatedUser.UpdatedAt = DateTime.UtcNow;
+
+                _userRepository.UpdateUser(updatedUser);
             }
             catch (Exception ex)
             {
-                throw new Exception($"An error occurred while updating user {user.EmployeeId}.", ex);
+                throw new Exception($"An error occurred while updating user {id}.", ex);
             }
         }
 
-        // Delete user
-        public async Task DeleteUser(string id)
+        public void DeleteUser(string id)
         {
             try
             {
-                await _userRepository.DeleteById(id);
+                _userRepository.DeleteById(id);
             }
             catch (Exception ex)
             {

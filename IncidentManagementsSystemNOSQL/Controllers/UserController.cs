@@ -14,11 +14,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             _userService = userService;
         }
 
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
             try
             {
-                var users = await _userService.GetAllUsers();
+                var users = _userService.GetAllUsers();
                 return View(users);
             }
             catch (Exception ex)
@@ -28,11 +28,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public async Task<IActionResult> Details(string id)
+        public IActionResult Details(string id)
         {
             try
             {
-                var user = await _userService.GetUserById(id);
+                var user = _userService.GetUserById(id);
                 if (user == null) return NotFound();
                 return View(user);
             }
@@ -50,7 +50,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(User user)
+        public IActionResult Create(User user)
         {
             if (!ModelState.IsValid) return View(user);
 
@@ -58,7 +58,8 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             {
                 user.IsActive = true;
                 user.MustChangePassword = true;
-                await _userService.AddUser(user);
+                // FIX: Direct synchronous call
+                _userService.AddUser(user);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -69,11 +70,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public async Task<IActionResult> Edit(string id)
+        public IActionResult Edit(string id)
         {
             try
             {
-                var user = await _userService.GetUserById(id);
+                var user = _userService.GetUserById(id);
                 if (user == null) return NotFound();
                 return View(user);
             }
@@ -86,14 +87,14 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(string id, User user)
+        public IActionResult Edit(string id, User user)
         {
             if (id != user.Id) return BadRequest();
             if (!ModelState.IsValid) return View(user);
 
             try
             {
-                await _userService.UpdateUser(id,user);
+                _userService.UpdateUser(id, user);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -104,11 +105,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public async Task<IActionResult> Delete(string id)
+        public IActionResult Delete(string id)
         {
             try
             {
-                var user = await _userService.GetUserById(id);
+                var user = _userService.GetUserById(id);
                 if (user == null) return NotFound();
                 return View(user);
             }
@@ -121,11 +122,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(string id)
+        public IActionResult DeleteConfirmed(string id)
         {
             try
             {
-                await _userService.DeleteUser(id);
+                _userService.DeleteUser(id);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)

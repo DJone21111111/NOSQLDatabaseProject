@@ -1,0 +1,44 @@
+﻿@model IncidentManagementsSystemNOSQL.Models.LoginViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Login";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Incident Management System – The Garden Group</title>
+    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="brand">
+                <img src="~/Images/flower.png" asp-append-version="true" alt="The Garden Group" class="logo" />
+                <div class="company">The Garden Group</div>
+                <div class="system-badge">Incident Management System</div>
+                <h1>Login</h1>
+            </div>
+
+            <form asp-action="Login" method="post" novalidate>
+                @Html.AntiForgeryToken()
+
+                <label asp-for="Username">Username</label>
+                <input asp-for="Username" class="field" autocomplete="username" placeholder="Enter username" />
+
+                <label asp-for="Password">Password</label>
+                <input asp-for="Password" class="field" type="password" autocomplete="current-password" />
+
+                <input type="hidden" asp-for="ReturnUrl" />
+                <button class="btn" type="submit">Login</button>
+
+                <div class="links">
+                    <a asp-controller="Account" asp-action="ForgotPassword">Forget password</a>
+                    <a asp-controller="Account" asp-action="SetPassword">Set password</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
