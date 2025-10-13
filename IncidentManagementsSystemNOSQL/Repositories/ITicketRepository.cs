@@ -8,7 +8,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         Ticket? GetById(string id);
         List<Ticket> GetByUserId(string userId);
         List<Ticket> GetAll();
-
+        List<Ticket> GetByPriority(Enums.PriorityLevel priority);
         List<Ticket> GetByStatus(Enums.TicketStatus status);
 
         // Might need to filter by time range in the future. We are not using it for now.

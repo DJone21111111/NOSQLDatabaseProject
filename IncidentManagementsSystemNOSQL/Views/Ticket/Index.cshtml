@@ -1,0 +1,17 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+    <form method="get" class="mb-3">
+        <label for="priority">Priority:</label>
+        <select id="priority" name="priority" onchange="this.form.submit()">
+            <option value="">All</option>
+            <option value="Critical" selected="@(ViewBag.Priority == "Critical")">Critical</option>
+            <option value="High" selected="@(ViewBag.Priority == "High")">High</option>
+            <option value="Normal" selected="@(ViewBag.Priority == "Normal")">Normal</option>
+            <option value="Low" selected="@(ViewBag.Priority == "Low")">Low</option>
+        </select>
+        <noscript><button type="submit">Apply</button></noscript>
+    </form>
+
+}

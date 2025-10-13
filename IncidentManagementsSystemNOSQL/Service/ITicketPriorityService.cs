@@ -4,36 +4,16 @@ using MongoDB.Driver;
 
 namespace IncidentManagementsSystemNOSQL.Service
 {
-    public interface ITicketPriorityService
+    namespace IncidentManagementsSystemNOSQL.Service
     {
-        SortDefinition<Ticket> BuildSort(string sortKey);
-        bool IsSupported(string sortKey);
-    }
-
-    public class TicketSortService : ITicketPriorityService
-    {
-        public bool IsSupported(string sortKey) => sortKey is "priority" or "recent" or "oldest";
-
-        public SortDefinition<Ticket> BuildSort(string sortKey)
+        public interface ITicketPriorityService
         {
-            var sort = Builders<Ticket>.Sort;
+            // Returns a filter for a specific priority
+            FilterDefinition<Ticket> BuildPriorityFilter(Enums.PriorityLevel priority);
 
-            return sortKey switch
-            {
-                // Primary: Priority (enum order Critical→Low), Secondary: CreatedAt desc (newest first)
-                "priority" => sort.Ascending(t => t.Priority)
-                                  .Descending(t => t.DateCreated),
+            // Helper: parse "critical"/"Critical"/"HIGH" → PriorityLevel
+            bool TryParsePriority(string? input, out Enums.PriorityLevel priority);
 
-                // Newest first
-                "recent" => sort.Descending(t => t.DateCreated),
-
-                // Oldest first
-                "oldest" => sort.Ascending(t => t.DateCreated),
-
-                // Safe default: priority sort
-                _ => sort.Ascending(t => t.Priority)
-                                  .Descending(t => t.DateCreated),
-            };
         }
     }
 }

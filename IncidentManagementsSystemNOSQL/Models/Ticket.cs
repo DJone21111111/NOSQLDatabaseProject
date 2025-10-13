@@ -5,7 +5,7 @@ namespace IncidentManagementsSystemNOSQL.Models
 {
     public class Ticket
     {
-        public string Id { get; set; } = null!;
+        public ObjectId Id { get; set; }
         public string TicketId { get; set; } = null!;
         public string Title { get; set; } = null!;
         public string? Description { get; set; }

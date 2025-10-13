@@ -1,31 +1,39 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
 using IncidentManagementsSystemNOSQL.Service;
+using IncidentManagementsSystemNOSQL.Service.IncidentManagementsSystemNOSQL.Service;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
     public class TicketController : Controller
     {
         private readonly ITicketService _ticketService;
+        private readonly ITicketPriorityService _priorityService
 
-        public TicketController(ITicketService ticketService)
+            ;
+
+        public TicketController(ITicketService ticketService, ITicketPriorityService priorityService)
         {
             _ticketService = ticketService;
+            _priorityService = _priorityService;
         }
-        public IActionResult Index()
+        public IActionResult Index([FromQuery] string? priority = null)
         {
-            try
+            // TEMP: no try/catch so you get the full yellow-page stack in dev
+            if (!string.IsNullOrWhiteSpace(priority) &&
+                _priorityService.TryParsePriority(priority, out var p))
             {
-                var tickets = _ticketService.GetAll();
-                return View(tickets);
+                var filtered = _priorityService.BuildPriorityFilter(p);
+                ViewBag.Priority = p.ToString();
+                return View(filtered);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading tickets: {ex.Message}");
-                return StatusCode(500, "An error occurred while retrieving tickets.");
-            }
+
+            ViewBag.Priority = "All";
+            return View(_ticketService.GetAll());
         }
+
 
         public IActionResult Details(string id)
         {
@@ -89,7 +97,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Edit(string id, Ticket ticket)
         {
-            if (id != ticket.Id) return BadRequest();
+            if (!ObjectId.TryParse(id, out var objectId) || objectId != ticket.Id)
+                return BadRequest();
+
             if (!ModelState.IsValid) return View(ticket);
 
             try

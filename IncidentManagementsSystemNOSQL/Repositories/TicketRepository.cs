@@ -1,4 +1,7 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
+using IncidentManagementsSystemNOSQL.Service.IncidentManagementsSystemNOSQL.Service;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 
 namespace IncidentManagementsSystemNOSQL.Repositories
@@ -6,17 +9,22 @@ namespace IncidentManagementsSystemNOSQL.Repositories
     public class TicketRepository : ITicketRepository
     {
         private readonly IMongoCollection<Ticket> _tickets;
+        private readonly ITicketPriorityService _prioritySvc;
 
         public TicketRepository(IMongoDatabase db)
         {
             _tickets = db.GetCollection<Ticket>("tickets");
+            _prioritySvc = _prioritySvc;
         }
+        [BsonElement("ticketId")]
+        public string TicketId { get; set; } = null!;
 
         public Ticket? GetById(string id)
         {
             try
             {
-                return _tickets.Find(t => t.Id == id).FirstOrDefault();
+                var objectId = ObjectId.Parse(id); // Convert string to ObjectId
+                return _tickets.Find(t => t.Id == objectId).FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -92,7 +100,8 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         {
             try
             {
-                _tickets.ReplaceOne(t => t.Id == id, updated);
+                var objectId = ObjectId.Parse(id); // Convert string to ObjectId
+                _tickets.ReplaceOne(t => t.Id == objectId, updated);
             }
             catch (Exception ex)
             {
@@ -104,7 +113,8 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         {
             try
             {
-                _tickets.DeleteOne(t => t.Id == id);
+                var objectId = ObjectId.Parse(id); // Convert string to ObjectId
+                _tickets.DeleteOne(t => t.Id == objectId);
             }
             catch (Exception ex)
             {
@@ -170,6 +180,19 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             {
                 throw new Exception("Error while ensuring indexes for tickets collection", ex);
             }
+        }
+
+        public List<Ticket> GetByPriority(Enums.PriorityLevel priority)
+        {
+            var filter = _prioritySvc.BuildPriorityFilter(priority);
+
+            // Optional: order newest first within this priority
+            var sort = Builders<Ticket>.Sort.Descending(t => t.DateCreated);
+
+            return _tickets.Find(filter)
+                           .Sort(sort)
+                           .Limit(1000)
+                           .ToList();
         }
     }
 }

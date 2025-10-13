@@ -1,5 +1,6 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
+using MongoDB.Bson;
 namespace IncidentManagementsSystemNOSQL.Service
 {
     public class TicketService : ITicketService
@@ -91,7 +92,7 @@ namespace IncidentManagementsSystemNOSQL.Service
 
         public void UpdateTicket(string id, Ticket updatedTicket)
         {
-            updatedTicket.Id = id;
+            updatedTicket.Id = ObjectId.Parse(id);
 
             try
             {
