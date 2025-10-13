@@ -1,28 +1,23 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
-
-namespace IncidentManagementsSystemNOSQL.Repositories
+namespace IncidentManagementsSystemNOSQL.Service
 {
-    public interface ITicketRepository
+    public interface ITicketService
     {
         // READ Operations
+        List<Ticket> GetAll();
         Ticket? GetById(string id);
         List<Ticket> GetByUserId(string userId);
-        List<Ticket> GetAll();
-
         List<Ticket> GetByStatus(string status);
 
-        // Might need to filter by time range in the future. We are not using it for now.
         List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);
 
+        // MUTATION Operations
         void AddTicket(Ticket ticket);
-        void UpdateTicket(string id, Ticket updated);
-        void DeleteById(string id);
+        void UpdateTicket(string id, Ticket updatedTicket);
+        void DeleteTicket(string id);
 
         // AGGREGATION Operations
         Dictionary<string, int> GetTicketCountsByStatus();
         Dictionary<string, int> GetTicketCountsByDepartment();
-
-        // SETUP Operation
-        void EnsureIndexes();
     }
 }

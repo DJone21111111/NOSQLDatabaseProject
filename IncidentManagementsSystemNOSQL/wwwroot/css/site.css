@@ -1,22 +1,118 @@
-html {
-  font-size: 14px;
-}
+/* -------------------------------------- */
+/* --- LOGIN PAGE STYLES (The Garden Group) --- */
+/* -------------------------------------- */
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
-}
-
+/* --- Global Background and Centering (MODIFIED for safety) --- */
+/* This overrides the background color to the sage green and centers the card */
 body {
-  margin-bottom: 60px;
+    background-color: #d8e4d8 !important; /* Use !important to ensure override */
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
 }
+
+/* --- Login Container Styling (The white card area) --- */
+.login-page-container {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.login-card {
+    background-color: white;
+    padding: 40px;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 350px;
+    text-align: center;
+}
+
+/* --- Logo and Header Styles --- */
+.logo-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.flower-icon {
+    color: #333; /* Dark gray for the icon */
+    margin-bottom: 5px;
+}
+
+.company-name {
+    font-size: 1.2em;
+    font-weight: normal;
+    margin: 0;
+}
+
+.login-card h2 {
+    font-size: 1.8em;
+    margin: 5px 0 25px 0;
+    font-weight: 600;
+}
+
+/* --- Form and Input Styles --- */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+    .login-form label {
+        margin-top: 15px;
+        margin-bottom: 5px;
+        font-weight: bold;
+        font-size: 0.9em;
+    }
+
+    .login-form input[type="text"],
+    .login-form input[type="password"] {
+        padding: 10px;
+        border: 1px solid #333; /* Darker border */
+        border-radius: 4px;
+        font-size: 1em;
+        outline: none;
+    }
+
+    .login-form input::placeholder {
+        color: #aaa;
+    }
+
+/* --- Login Button Styles --- */
+.login-button {
+    background-color: #5865f2; /* Blue color */
+    color: white;
+    padding: 12px 20px;
+    border: 1px solid #333; /* Black outline */
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    margin-top: 25px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+    .login-button:hover {
+        background-color: #4a57d6;
+    }
+
+/* --- Footer Links --- */
+.footer-links {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+    .footer-links a {
+        color: #333;
+        text-decoration: none;
+    }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }

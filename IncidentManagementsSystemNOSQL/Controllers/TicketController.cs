@@ -1,38 +1,37 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
+using IncidentManagementsSystemNOSQL.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
     public class TicketController : Controller
     {
-        private readonly ITicketRepository _ticketRepository;
+        private readonly ITicketService _ticketService;
 
-        public TicketController(ITicketRepository ticketRepository)
+        public TicketController(ITicketService ticketService)
         {
-            _ticketRepository = ticketRepository;
+            _ticketService = ticketService;
         }
-
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
             try
             {
-                var tickets = await _ticketRepository.GetAll();
+                var tickets = _ticketService.GetAll();
                 return View(tickets);
             }
             catch (Exception ex)
             {
-                // Log error (you can inject ILogger<TicketController> for proper logging)
                 Console.WriteLine($"Error loading tickets: {ex.Message}");
                 return StatusCode(500, "An error occurred while retrieving tickets.");
             }
         }
 
-        public async Task<IActionResult> Details(string id)
+        public IActionResult Details(string id)
         {
             try
             {
-                var ticket = await _ticketRepository.GetById(id);
+                var ticket = _ticketService.GetById(id);
                 if (ticket == null) return NotFound();
                 return View(ticket);
             }
@@ -50,16 +49,16 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Ticket ticket)
+        public IActionResult Create(Ticket ticket)
         {
             if (!ModelState.IsValid) return View(ticket);
 
             try
             {
                 ticket.DateCreated = DateTime.UtcNow;
-                ticket.Status = Enums.TicketStatus.open;
+                ticket.Status = "open";
 
-                await _ticketRepository.AddTicket(ticket);
+                _ticketService.AddTicket(ticket);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -70,11 +69,12 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public async Task<IActionResult> Edit(string id)
+        public IActionResult Edit(string id)
         {
             try
             {
-                var ticket = await _ticketRepository.GetById(id);
+
+                var ticket = _ticketService.GetById(id);
                 if (ticket == null) return NotFound();
                 return View(ticket);
             }
@@ -87,14 +87,14 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(string id, Ticket ticket)
+        public IActionResult Edit(string id, Ticket ticket)
         {
             if (id != ticket.Id) return BadRequest();
             if (!ModelState.IsValid) return View(ticket);
 
             try
             {
-                await _ticketRepository.UpdateTicket(ticket);
+                _ticketService.UpdateTicket(id, ticket);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -105,11 +105,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public async Task<IActionResult> Delete(string id)
+        public IActionResult Delete(string id)
         {
             try
             {
-                var ticket = await _ticketRepository.GetById(id);
+                var ticket = _ticketService.GetById(id);
                 if (ticket == null) return NotFound();
                 return View(ticket);
             }
@@ -122,11 +122,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(string id)
+        public IActionResult DeleteConfirmed(string id)
         {
             try
             {
-                await _ticketRepository.DeleteById(id);
+                _ticketService.DeleteTicket(id);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -135,5 +135,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 return StatusCode(500, "An error occurred while deleting the ticket.");
             }
         }
+
+       
     }
 }

@@ -4,17 +4,16 @@ namespace IncidentManagementsSystemNOSQL.Repositories
 {
     public interface IUserRepository
     {
-        Task<User?> GetByUsername(string username);
-        Task<User?> GetByEmployeeId(string employeeId);
+        User? GetByUsername(string username);
+        User? GetByEmployeeId(string employeeId);
+        User? GetById(string id);
+        List<User> GetAll();
 
-        Task<User> GetById(string id);
-        Task<List<User>> GetAll();
+        void SetPasswordHash(string id, string newPasswordHash);
 
-        Task AddUser(User user);
-        Task UpdateUser(User user);
-        Task DeleteById(string id);
-
-        // Makes query faster and ensures uniqueness
-        Task EnsureIndexes(CancellationToken ct = default);
+        void AddUser(User user);
+        void UpdateUser(User user);
+        void DeleteById(string id);
+        void EnsureIndexes();
     }
 }

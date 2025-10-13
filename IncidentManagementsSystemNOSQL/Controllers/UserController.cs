@@ -1,23 +1,24 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
+using IncidentManagementsSystemNOSQL.Service;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
     public class UserController : Controller
     {
-        private readonly IUserRepository _userRepository;
+        private readonly IUserService _userService;
 
-        public UserController(IUserRepository userRepository)
+        public UserController(IUserService userService)
         {
-            _userRepository = userRepository;
+            _userService = userService;
         }
 
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
             try
             {
-                var users = await _userRepository.GetAll();
+                var users = _userService.GetAllUsers();
                 return View(users);
             }
             catch (Exception ex)
@@ -27,11 +28,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public async Task<IActionResult> Details(string id)
+        public IActionResult Details(string id)
         {
             try
             {
-                var user = await _userRepository.GetById(id);
+                var user = _userService.GetUserById(id);
                 if (user == null) return NotFound();
                 return View(user);
             }
@@ -49,15 +50,16 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(User user)
+        public IActionResult Create(User user)
         {
             if (!ModelState.IsValid) return View(user);
 
             try
             {
                 user.IsActive = true;
-                user.MustChangePassword = true; 
-                await _userRepository.AddUser(user);
+                user.MustChangePassword = true;
+                // FIX: Direct synchronous call
+                _userService.AddUser(user);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -68,11 +70,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public async Task<IActionResult> Edit(string id)
+        public IActionResult Edit(string id)
         {
             try
             {
-                var user = await _userRepository.GetById(id);
+                var user = _userService.GetUserById(id);
                 if (user == null) return NotFound();
                 return View(user);
             }
@@ -85,14 +87,14 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(string id, User user)
+        public IActionResult Edit(string id, User user)
         {
             if (id != user.Id) return BadRequest();
             if (!ModelState.IsValid) return View(user);
 
             try
             {
-                await _userRepository.UpdateUser(user);
+                _userService.UpdateUser(id, user);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
@@ -103,11 +105,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public async Task<IActionResult> Delete(string id)
+        public IActionResult Delete(string id)
         {
             try
             {
-                var user = await _userRepository.GetById(id);
+                var user = _userService.GetUserById(id);
                 if (user == null) return NotFound();
                 return View(user);
             }
@@ -120,11 +122,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(string id)
+        public IActionResult DeleteConfirmed(string id)
         {
             try
             {
-                await _userRepository.DeleteById(id);
+                _userService.DeleteUser(id);
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)

@@ -1,9 +1,8 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
-
 namespace IncidentManagementsSystemNOSQL.Service
 {
-    public class TicketService
+    public class TicketService : ITicketService
     {
         private readonly ITicketRepository _ticketRepository;
 
@@ -12,11 +11,12 @@ namespace IncidentManagementsSystemNOSQL.Service
             _ticketRepository = ticketRepository;
         }
 
-        public async Task<List<Ticket>> GetAllTickets()
+
+        public List<Ticket> GetAll()
         {
             try
             {
-                return await _ticketRepository.GetAll();
+                return _ticketRepository.GetAll();
             }
             catch (Exception ex)
             {
@@ -24,11 +24,11 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public async Task<Ticket?> GetTicketById(string id)
+        public Ticket? GetById(string id)
         {
             try
             {
-                return await _ticketRepository.GetById(id);
+                return _ticketRepository.GetById(id);
             }
             catch (Exception ex)
             {
@@ -36,11 +36,11 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public async Task<List<Ticket>> GetTicketsByUserId(string userId)
+        public List<Ticket> GetByUserId(string userId)
         {
             try
             {
-                return await _ticketRepository.GetByUserId(userId);
+                return _ticketRepository.GetByUserId(userId);
             }
             catch (Exception ex)
             {
@@ -48,11 +48,11 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public async Task<List<Ticket>> GetTicketsByStatus(Enums.TicketStatus status)
+        public List<Ticket> GetByStatus(string status)
         {
             try
             {
-                return await _ticketRepository.GetByStatus(status);
+                return _ticketRepository.GetByStatus(status);
             }
             catch (Exception ex)
             {
@@ -60,13 +60,28 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public async Task AddTicket(Ticket ticket)
+
+        public List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                return _ticketRepository.GetByDateRange(startDate, endDate);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while retrieving tickets by date range.", ex);
+            }
+        }
+
+
+        public void AddTicket(Ticket ticket)
         {
             try
             {
                 ticket.DateCreated = DateTime.UtcNow;
-                ticket.Status = Enums.TicketStatus.open;
-                await _ticketRepository.AddTicket(ticket);
+                ticket.Status = "open";
+
+                _ticketRepository.AddTicket(ticket);
             }
             catch (Exception ex)
             {
@@ -74,28 +89,30 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public async Task UpdateTicket(Ticket ticket)
+        public void UpdateTicket(string id, Ticket updatedTicket)
         {
+            updatedTicket.Id = id;
+
             try
             {
-                if (ticket.Status == Enums.TicketStatus.closed_resolved)
+                if (updatedTicket.Status == "closed_resolved" || updatedTicket.Status == "closed_no_resolve")
                 {
-                    ticket.DateClosed = DateTime.UtcNow;
+                    updatedTicket.DateClosed = DateTime.UtcNow;
                 }
 
-                await _ticketRepository.UpdateTicket(ticket);
+                _ticketRepository.UpdateTicket(id,updatedTicket);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error while updating ticket '{ticket.Id}'.", ex);
+                throw new Exception($"Error while updating ticket '{updatedTicket.Id}'.", ex);
             }
         }
 
-        public async Task DeleteTicket(string id)
+        public void DeleteTicket(string id)
         {
             try
             {
-                await _ticketRepository.DeleteById(id);
+                _ticketRepository.DeleteById(id);
             }
             catch (Exception ex)
             {
@@ -103,11 +120,12 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public async Task<Dictionary<Enums.TicketStatus, int>> GetTicketCountsByStatusAsync()
+
+        public Dictionary<string, int> GetTicketCountsByStatus()
         {
             try
             {
-                return await _ticketRepository.GetTicketCountsByStatus();
+                return _ticketRepository.GetTicketCountsByStatus();
             }
             catch (Exception ex)
             {
@@ -115,11 +133,11 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public async Task<Dictionary<string, int>> GetTicketCountsByDepartment()
+        public Dictionary<string, int> GetTicketCountsByDepartment()
         {
             try
             {
-                return await _ticketRepository.GetTicketCountsByDepartment();
+                return _ticketRepository.GetTicketCountsByDepartment();
             }
             catch (Exception ex)
             {

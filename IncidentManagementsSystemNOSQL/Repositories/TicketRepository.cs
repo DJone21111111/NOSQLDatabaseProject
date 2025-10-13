@@ -12,12 +12,11 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             _tickets = db.GetCollection<Ticket>("tickets");
         }
 
-
-        public async Task<Ticket?> GetById(string id)
+        public Ticket? GetById(string id)
         {
             try
             {
-                return await _tickets.Find(t => t.Id == id).FirstOrDefaultAsync();
+                return _tickets.Find(t => t.Id == id).FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -25,11 +24,11 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task<List<Ticket>> GetByUserId(string userId)
+        public List<Ticket> GetByUserId(string userId)
         {
             try
             {
-                return await _tickets.Find(t => t.Employee.EmployeeId == userId).ToListAsync();
+                return _tickets.Find(t => t.Employee.EmployeeId == userId).ToList();
             }
             catch (Exception ex)
             {
@@ -37,13 +36,13 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task<List<Ticket>> GetAll()
+        public List<Ticket> GetAll()
         {
             try
             {
-                return await _tickets.Find(FilterDefinition<Ticket>.Empty)
-                                     .SortByDescending(t => t.DateCreated)
-                                     .ToListAsync();
+                return _tickets.Find(FilterDefinition<Ticket>.Empty)
+                                 .SortByDescending(t => t.DateCreated)
+                                 .ToList();
             }
             catch (Exception ex)
             {
@@ -51,11 +50,11 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task<List<Ticket>> GetByStatus(Enums.TicketStatus status)
+        public List<Ticket> GetByStatus(string status)
         {
             try
             {
-                return await _tickets.Find(t => t.Status == status).ToListAsync();
+                return _tickets.Find(t => t.Status == status).ToList();
             }
             catch (Exception ex)
             {
@@ -63,12 +62,25 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-
-        public async Task AddTicket(Ticket ticket)
+        public List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate)
         {
             try
             {
-                await _tickets.InsertOneAsync(ticket);
+                // Filters for tickets created between the start and end dates (inclusive)
+                return _tickets.Find(t => t.DateCreated >= startDate && t.DateCreated <= endDate)
+                                 .ToList();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while retrieving tickets by date range", ex);
+            }
+        }
+
+        public void AddTicket(Ticket ticket)
+        {
+            try
+            {
+                _tickets.InsertOne(ticket);
             }
             catch (Exception ex)
             {
@@ -76,23 +88,23 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task UpdateTicket(Ticket ticket)
+        public void UpdateTicket(string id, Ticket updated)
         {
             try
             {
-                await _tickets.ReplaceOneAsync(t => t.Id == ticket.Id, ticket);
+                _tickets.ReplaceOne(t => t.Id == id, updated);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error while updating ticket '{ticket.Id}'", ex);
+                throw new Exception($"Error while updating ticket '{id}'", ex);
             }
         }
 
-        public async Task DeleteById(string id)
+        public void DeleteById(string id)
         {
             try
             {
-                await _tickets.DeleteOneAsync(t => t.Id == id);
+                _tickets.DeleteOne(t => t.Id == id);
             }
             catch (Exception ex)
             {
@@ -100,13 +112,13 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task<Dictionary<Enums.TicketStatus, int>> GetTicketCountsByStatus()
+        public Dictionary<string, int> GetTicketCountsByStatus()
         {
             try
             {
-                var results = await _tickets.Aggregate()
+                var results = _tickets.Aggregate()
                     .Group(t => t.Status, g => new { Status = g.Key, Count = g.Count() })
-                    .ToListAsync();
+                    .ToList();
 
                 return results.ToDictionary(r => r.Status, r => r.Count);
             }
@@ -116,13 +128,13 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public async Task<Dictionary<string, int>> GetTicketCountsByDepartment()
+        public Dictionary<string, int> GetTicketCountsByDepartment()
         {
             try
             {
-                var results = await _tickets.Aggregate()
+                var results = _tickets.Aggregate()
                     .Group(t => t.Employee.Department.Name, g => new { Department = g.Key, Count = g.Count() })
-                    .ToListAsync();
+                    .ToList();
 
                 return results.ToDictionary(r => r.Department, r => r.Count);
             }
@@ -132,8 +144,8 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-
-        public async Task EnsureIndexesAsync(CancellationToken ct = default)
+        // Makes query faster and ensures uniqueness
+        public void EnsureIndexes()
         {
             try
             {
@@ -144,15 +156,15 @@ namespace IncidentManagementsSystemNOSQL.Repositories
                         new CreateIndexOptions { Name = "ix_status" }),
 
                     new CreateIndexModel<Ticket>(
-                        Builders<Ticket>.IndexKeys.Ascending("CreatedBy.Id"),
-                        new CreateIndexOptions { Name = "ix_createdById" }),
+                        Builders<Ticket>.IndexKeys.Ascending("Employee.EmployeeId"),
+                        new CreateIndexOptions { Name = "ix_employeeId" }),
 
                     new CreateIndexModel<Ticket>(
                         Builders<Ticket>.IndexKeys.Descending(t => t.DateCreated),
                         new CreateIndexOptions { Name = "ix_createdAt" })
                 };
 
-                await _tickets.Indexes.CreateManyAsync(models, ct);
+                _tickets.Indexes.CreateManyAsync(models).Wait();
             }
             catch (Exception ex)
             {
