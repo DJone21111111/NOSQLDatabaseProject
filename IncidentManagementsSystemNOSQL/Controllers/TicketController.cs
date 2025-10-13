@@ -64,7 +64,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             try
             {
                 ticket.DateCreated = DateTime.UtcNow;
-                ticket.Status = Enums.TicketStatus.open;
+                ticket.Status = "open";
 
                 _ticketService.AddTicket(ticket);
                 return RedirectToAction(nameof(Index));

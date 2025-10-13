@@ -58,7 +58,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public List<Ticket> GetByStatus(Enums.TicketStatus status)
+        public List<Ticket> GetByStatus(string status)
         {
             try
             {
@@ -122,7 +122,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus()
+        public Dictionary<string, int> GetTicketCountsByStatus()
         {
             try
             {

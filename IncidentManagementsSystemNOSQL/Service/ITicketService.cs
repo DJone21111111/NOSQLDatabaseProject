@@ -7,7 +7,7 @@ namespace IncidentManagementsSystemNOSQL.Service
         List<Ticket> GetAll();
         Ticket? GetById(string id);
         List<Ticket> GetByUserId(string userId);
-        List<Ticket> GetByStatus(Enums.TicketStatus status);
+        List<Ticket> GetByStatus(string status);
 
         List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);
 
@@ -17,7 +17,7 @@ namespace IncidentManagementsSystemNOSQL.Service
         void DeleteTicket(string id);
 
         // AGGREGATION Operations
-        Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus();
+        Dictionary<string, int> GetTicketCountsByStatus();
         Dictionary<string, int> GetTicketCountsByDepartment();
     }
 }

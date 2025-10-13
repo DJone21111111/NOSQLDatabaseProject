@@ -8,8 +8,8 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         Ticket? GetById(string id);
         List<Ticket> GetByUserId(string userId);
         List<Ticket> GetAll();
-        List<Ticket> GetByPriority(Enums.PriorityLevel priority);
-        List<Ticket> GetByStatus(Enums.TicketStatus status);
+
+        List<Ticket> GetByStatus(string status);
 
         // Might need to filter by time range in the future. We are not using it for now.
         List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);
@@ -19,7 +19,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         void DeleteById(string id);
 
         // AGGREGATION Operations
-        Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus();
+        Dictionary<string, int> GetTicketCountsByStatus();
         Dictionary<string, int> GetTicketCountsByDepartment();
 
         // SETUP Operation
