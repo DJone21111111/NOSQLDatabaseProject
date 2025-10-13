@@ -48,7 +48,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public List<Ticket> GetByStatus(Enums.TicketStatus status)
+        public List<Ticket> GetByStatus(string status)
         {
             try
             {
@@ -79,7 +79,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             try
             {
                 ticket.DateCreated = DateTime.UtcNow;
-                ticket.Status = Enums.TicketStatus.open;
+                ticket.Status = "open";
 
                 _ticketRepository.AddTicket(ticket);
             }
@@ -95,7 +95,7 @@ namespace IncidentManagementsSystemNOSQL.Service
 
             try
             {
-                if (updatedTicket.Status == Enums.TicketStatus.closed_resolved)
+                if (updatedTicket.Status == "closed_resolved" || updatedTicket.Status == "closed_no_resolve")
                 {
                     updatedTicket.DateClosed = DateTime.UtcNow;
                 }
@@ -121,7 +121,7 @@ namespace IncidentManagementsSystemNOSQL.Service
         }
 
 
-        public Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus()
+        public Dictionary<string, int> GetTicketCountsByStatus()
         {
             try
             {
