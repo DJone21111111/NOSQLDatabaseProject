@@ -25,5 +25,13 @@
             Marketing
         }
 
+        public enum PriorityLevel
+        {
+            low,
+            medium,
+            high,
+            critical
+        }
+
     }
 }
