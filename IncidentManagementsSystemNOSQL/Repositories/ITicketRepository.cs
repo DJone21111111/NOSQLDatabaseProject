@@ -8,9 +8,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         Ticket? GetById(string id);
         List<Ticket> GetByUserId(string userId);
         List<Ticket> GetAll();
-
         List<Ticket> GetByStatus(string status);
-    List<Ticket> GetByAssignedAgent(string agentEmployeeId);
 
         // Might need to filter by time range in the future. We are not using it for now.
         List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);

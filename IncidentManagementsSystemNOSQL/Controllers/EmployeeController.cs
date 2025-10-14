@@ -50,36 +50,6 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public IActionResult AssignedTickets(string? employeeId)
-        {
-            try
-            {
-                ViewBag.HideUsersNav = true;
-                ViewBag.EmployeeMode = true;
-
-                User? employee = ResolveEmployee(employeeId);
-                if (employee == null)
-                {
-                    TempData["ErrorMessage"] = "We could not find an employee profile to load.";
-                    return RedirectToAction(nameof(Index));
-                }
-
-                ViewBag.EmployeeId = employee.EmployeeId;
-
-                List<Ticket> tickets = _ticketService.GetByAssignedAgent(employee.EmployeeId) ?? new List<Ticket>();
-                List<Ticket> orderedTickets = tickets.OrderByDescending(t => t.DateCreated).ToList();
-
-                EmployeeAssignedTicketsViewModel model = BuildAssignedTicketsModel(employee, orderedTickets);
-                return View("AssignedTickets", model);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading assigned tickets for {EmployeeId}", employeeId);
-                TempData["ErrorMessage"] = "An unexpected error occurred while loading tickets assigned to you.";
-                return RedirectToAction(nameof(Index));
-            }
-        }
-
         public IActionResult CreateTicket(string employeeId)
         {
             try
@@ -217,38 +187,5 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             };
         }
 
-        private static EmployeeAssignedTicketsViewModel BuildAssignedTicketsModel(User employee, List<Ticket> tickets)
-        {
-            Dictionary<string, int> statusCounts = tickets
-                .GroupBy(t => string.IsNullOrWhiteSpace(t.Status) ? "open" : t.Status, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
-
-            statusCounts.TryGetValue("open", out int openCount);
-            statusCounts.TryGetValue("in_progress", out int inProgressCount);
-            statusCounts.TryGetValue("closed_resolved", out int closedResolvedCount);
-            statusCounts.TryGetValue("closed_no_resolve", out int closedNoResolveCount);
-
-            int total = tickets.Count;
-
-            double Percentage(int count) => total > 0 ? Math.Round((double)count / total * 100, 1) : 0;
-
-            return new EmployeeAssignedTicketsViewModel
-            {
-                EmployeeId = employee.EmployeeId,
-                EmployeeName = employee.Name,
-                EmployeeEmail = employee.Email,
-                DepartmentName = employee.Department?.Name ?? string.Empty,
-                Tickets = tickets,
-                TotalTickets = total,
-                OpenCount = openCount,
-                InProgressCount = inProgressCount,
-                ClosedResolvedCount = closedResolvedCount,
-                ClosedNoResolveCount = closedNoResolveCount,
-                OpenPercent = Percentage(openCount),
-                InProgressPercent = Percentage(inProgressCount),
-                ClosedResolvedPercent = Percentage(closedResolvedCount),
-                ClosedNoResolvePercent = Percentage(closedNoResolveCount)
-            };
-        }
     }
 }

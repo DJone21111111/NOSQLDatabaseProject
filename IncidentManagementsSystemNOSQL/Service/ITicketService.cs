@@ -8,7 +8,6 @@ namespace IncidentManagementsSystemNOSQL.Service
         Ticket? GetById(string id);
         List<Ticket> GetByUserId(string userId);
         List<Ticket> GetByStatus(string status);
-    List<Ticket> GetByAssignedAgent(string agentEmployeeId);
 
         List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);
 

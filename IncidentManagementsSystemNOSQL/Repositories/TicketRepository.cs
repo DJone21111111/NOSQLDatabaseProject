@@ -69,29 +69,6 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public List<Ticket> GetByAssignedAgent(string agentEmployeeId)
-        {
-            if (string.IsNullOrWhiteSpace(agentEmployeeId))
-            {
-                throw new ArgumentException("Agent employee id is required", nameof(agentEmployeeId));
-            }
-
-            try
-            {
-                var filter = Builders<Ticket>.Filter.ElemMatch(
-                    t => t.AssignedAgents,
-                    agent => agent.EmployeeId == agentEmployeeId);
-
-                return _tickets.Find(filter)
-                    .SortByDescending(t => t.DateCreated)
-                    .ToList();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error while retrieving tickets assigned to agent '{agentEmployeeId}'", ex);
-            }
-        }
-
         public List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate)
         {
             try

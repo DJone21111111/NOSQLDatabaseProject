@@ -77,30 +77,6 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public List<Ticket> GetByAssignedAgent(string agentEmployeeId)
-        {
-            if (string.IsNullOrWhiteSpace(agentEmployeeId))
-            {
-                return new List<Ticket>();
-            }
-
-            try
-            {
-                var tickets = _ticketRepository.GetByAssignedAgent(agentEmployeeId);
-                BackfillAssignmentsIfNeeded(tickets);
-
-                return tickets
-                    .Where(t => t.AssignedTo != null &&
-                                string.Equals(t.AssignedTo.EmployeeId, agentEmployeeId, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error while retrieving tickets assigned to agent '{agentEmployeeId}'.", ex);
-            }
-        }
-
-
         public List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate)
         {
             try
