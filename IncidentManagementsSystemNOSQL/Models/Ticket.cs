@@ -1,4 +1,6 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using System.Collections.Generic;
+using System.Linq;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson;
 
 namespace IncidentManagementsSystemNOSQL.Models
@@ -32,7 +34,23 @@ namespace IncidentManagementsSystemNOSQL.Models
         public EmployeeEmbedded Employee { get; set; } = null!;
 
         [BsonElement("HandledBy")]
-        public CommentAuthorEmbedded? AssignedTo { get; set; }
+        public List<CommentAuthorEmbedded>? AssignedAgents { get; set; }
+
+        [BsonIgnore]
+        public CommentAuthorEmbedded? AssignedTo
+        {
+            get => AssignedAgents?.FirstOrDefault();
+            set
+            {
+                if (value == null)
+                {
+                    AssignedAgents = null;
+                    return;
+                }
+
+                AssignedAgents = new List<CommentAuthorEmbedded> { value };
+            }
+        }
 
         [BsonElement("Comments")]
         public List<TicketComment> Comments { get; set; } = new();

@@ -1,0 +1,225 @@
+@model IncidentManagementsSystemNOSQL.Models.UserFormViewModel
+
+@{
+    ViewData["Title"] = "User Profile";
+}
+
+<div class="container-fluid px-4 py-3">
+    <div class="profile-header">
+        <div>
+            <h1 class="mb-1">👁️ Profile Overview</h1>
+            <p class="mb-0 text-muted">Snapshot of account details, department context, and security posture.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-dark-gradient">Edit Profile</a>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-pill">Back to Directory</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-8">
+            <div class="profile-card">
+                <div class="profile-card__section">
+                    <h5 class="section-title">👤 Identity</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <span class="label">Employee ID</span>
+                            <p class="value">@Model.EmployeeId</p>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="label">Username</span>
+                            <p class="value">@Model.UserName</p>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="label">Full Name</span>
+                            <p class="value">@Model.Name</p>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="label">Work Email</span>
+                            <p class="value">@Model.Email</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-card__section">
+                    <h5 class="section-title">🏢 Department</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <span class="label">Department Name</span>
+                            <p class="value">@Model.DepartmentName</p>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="label">Role</span>
+                            <span class="badge role-badge">@Model.Role</span>
+                        </div>
+                        <div class="col-12">
+                            <span class="label">Department Description</span>
+                            <p class="value">@(!string.IsNullOrWhiteSpace(Model.DepartmentDescription) ? Model.DepartmentDescription : "Not provided")</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-card__section">
+                    <h5 class="section-title">🔐 Security Flags</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="status-chip @(Model.IsActive ? "status-chip--active" : "status-chip--inactive")">
+                                <span>Account Status:</span>
+                                <strong>@(Model.IsActive ? "Active" : "Inactive")</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="status-chip @(Model.MustChangePassword ? "status-chip--warning" : "status-chip--stable")">
+                                <span>Password Reset:</span>
+                                <strong>@(Model.MustChangePassword ? "Required" : "Not required")</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="status-chip status-chip--stable">
+                                <span>Last Updated:</span>
+                                <strong>@(Model.LastUpdatedDisplay ?? "Just now")</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="summary-card">
+                <h5 class="mb-3">🗂️ Quick Actions</h5>
+                <ul class="list-unstyled mb-4">
+                    <li>• Update role and department changes promptly.</li>
+                    <li>• Monitor inactive accounts every quarter.</li>
+                    <li>• Enforce password resets after incident reviews.</li>
+                </ul>
+                <div class="d-flex flex-column gap-2">
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-dark-gradient">Edit Account</a>
+                    <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger btn-pill">Request Deletion</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .profile-header {
+        background: #111111;
+        color: #f7f7f7;
+        padding: 1.75rem 2rem;
+        border-radius: 12px;
+        box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .profile-card {
+        background: #121212;
+        border-radius: 16px;
+        box-shadow: 0 25px 55px rgba(0,0,0,0.55);
+        padding: 1.75rem;
+        color: #f4f4f4;
+    }
+
+    .profile-card__section + .profile-card__section {
+        margin-top: 1.75rem;
+        padding-top: 1.75rem;
+        border-top: 1px solid #1f1f1f;
+    }
+
+    .section-title {
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+    }
+
+    .label {
+        display: block;
+        font-size: .8rem;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: #9c9c9c;
+        margin-bottom: .35rem;
+    }
+
+    .value {
+        font-size: 1.05rem;
+        font-weight: 500;
+        color: #f0f0f0;
+    }
+
+    .role-badge {
+        background: linear-gradient(135deg, #232323 0%, #2f2f2f 100%);
+        color: #ededed;
+        border-radius: 999px;
+        padding: .45rem 1.2rem;
+        font-weight: 600;
+    }
+
+    .status-chip {
+        background: #181818;
+        border-radius: 12px;
+        padding: 1rem 1.1rem;
+        border: 1px solid #252525;
+        display: flex;
+        flex-direction: column;
+        gap: .25rem;
+        font-size: .9rem;
+        color: #dddddd;
+    }
+
+    .status-chip strong {
+        font-size: 1.05rem;
+        color: inherit;
+    }
+
+    .status-chip--active {
+        border-color: #2c8859;
+        box-shadow: 0 0 0 1px rgba(44,136,89,0.3);
+    }
+
+    .status-chip--inactive {
+        border-color: #a14646;
+        box-shadow: 0 0 0 1px rgba(161,70,70,0.3);
+    }
+
+    .status-chip--warning {
+        border-color: #d49a3a;
+        box-shadow: 0 0 0 1px rgba(212,154,58,0.35);
+    }
+
+    .status-chip--stable {
+        border-color: #2f2f2f;
+    }
+
+    .summary-card {
+        background: #161616;
+        border-radius: 16px;
+        box-shadow: 0 18px 38px rgba(0,0,0,0.5);
+        padding: 1.75rem;
+        color: #f5f5f5;
+    }
+
+    .btn-dark-gradient {
+        background: linear-gradient(135deg, #111111 0%, #232323 100%);
+        border: 1px solid #2d2d2d;
+        color: #ffffff;
+        font-weight: 600;
+        padding: .6rem 1.6rem;
+        border-radius: 999px;
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .btn-dark-gradient:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.45);
+        color: #ffffff;
+    }
+
+    .btn-outline-danger {
+        border-radius: 999px;
+        border-width: 1px;
+    }
+</style>

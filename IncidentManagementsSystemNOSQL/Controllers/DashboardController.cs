@@ -28,7 +28,23 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
                 ViewBag.StatusCounts = statusCounts;
                 ViewBag.DepartmentCounts = departmentCounts;
-                ViewBag.TotalTickets = tickets.Count;
+                var totalTickets = tickets.Count;
+                ViewBag.TotalTickets = totalTickets;
+
+                var statusPercentages = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                if (totalTickets > 0)
+                {
+                    foreach (var statusKey in statusCounts.Keys)
+                    {
+                        statusPercentages[statusKey] = Math.Round((double)statusCounts[statusKey] / totalTickets * 100, 1);
+                    }
+                }
+                else
+                {
+                    statusPercentages = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                }
+
+                ViewBag.StatusPercentages = statusPercentages;
 
                 return View(tickets);
             }

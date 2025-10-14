@@ -2,48 +2,332 @@
 
 @{
     ViewData["Title"] = "Service Desk Dashboard";
+    var statusCounts = ViewBag.StatusCounts as IDictionary<string, int> ?? new Dictionary<string, int>();
+    var statusPercentages = ViewBag.StatusPercentages as IDictionary<string, double> ?? new Dictionary<string, double>();
+    int CountFor(string key) => statusCounts.TryGetValue(key, out var value) ? value : 0;
+    double PercentFor(string key) => statusPercentages.TryGetValue(key, out var value) ? value : 0;
+    var totalTickets = ViewBag.TotalTickets is int total ? total : 0;
+    var closedResolvedCount = CountFor("closed_resolved");
+    var closedNoResolveCount = CountFor("closed_no_resolve");
+    var closedTotalCount = closedResolvedCount + closedNoResolveCount;
+    double closedPercent = totalTickets > 0 ? Math.Round((double)closedTotalCount / totalTickets * 100, 1) : 0;
 }
 
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="display-4">Service Desk Dashboard</h1>
-            <p class="lead">Welcome! Here's an overview of all incident tickets.</p>
+@Html.AntiForgeryToken()
+
+<style>
+    .dashboard-header {
+        background: linear-gradient(135deg, #141414 0%, #1f1f1f 100%);
+        color: #f7f7f7;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 18px 30px rgba(0,0,0,0.35);
+    }
+    
+    .stat-card {
+        border: none;
+        border-radius: 16px;
+        background: #111111;
+        color: #f5f5f5;
+        box-shadow: 0 25px 40px rgba(0,0,0,0.45);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+    }
+    
+    .stat-card .card-body {
+        padding: 1.75rem;
+    }
+    
+    .stat-icon {
+        font-size: 2.5rem;
+        opacity: 0.65;
+        float: right;
+    }
+    
+    .stat-number {
+        font-size: 2.6rem;
+        font-weight: 700;
+        margin: 0;
+        color: #ffffff;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.7;
+        color: #d0d0d0;
+    }
+    
+    .tickets-card {
+        border: none;
+        border-radius: 16px;
+        background: #121212;
+        color: #f3f3f3;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.55);
+    }
+    
+    .tickets-card .card-header {
+        background: #1b1b1b;
+        border-bottom: 1px solid #282828;
+        padding: 1.25rem 1.5rem;
+        border-radius: 16px 16px 0 0;
+    }
+    
+    .table thead th {
+        border-bottom: 1px solid #2c2c2c;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        color: #d6d6d6;
+        background: #181818;
+    }
+    
+    .table tbody tr {
+        transition: background-color 0.2s ease;
+        background-color: #141414;
+        color: #f5f5f5;
+        border-color: #1f1f1f;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #1c1c1c;
+    }
+
+    .table-hover tbody tr:hover td,
+    .table-hover tbody tr:hover th {
+        color: #f5f5f5;
+    }
+
+    .table-hover tbody tr:hover .text-muted {
+        color: #c2c2c2 !important;
+    }
+    
+    .badge {
+        padding: 0.45rem 0.75rem;
+        font-weight: 500;
+        font-size: 0.75rem;
+        border-radius: 20px;
+    }
+    
+    .btn-action {
+        padding: 0.375rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    .search-filter-section {
+        background: #161616;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 18px 30px rgba(0,0,0,0.45);
+        margin-bottom: 1.5rem;
+        color: #f3f3f3;
+    }
+    
+    .status-open { background: linear-gradient(135deg, #171717 0%, #262626 100%); }
+    .status-progress { background: linear-gradient(135deg, #161616 0%, #2b2b2b 100%); }
+    .status-closed { background: linear-gradient(135deg, #141414 0%, #282828 100%); }
+    .status-total { background: linear-gradient(135deg, #181818 0%, #2d2d2d 100%); }
+
+    .search-filter-section .form-control,
+    .search-filter-section .form-select {
+        background: #1f1f1f;
+        color: #f5f5f5;
+        border: 1px solid #2c2c2c;
+    }
+
+    .search-filter-section .form-control::placeholder {
+        color: #b3b3b3;
+    }
+
+    .search-filter-section .form-select option {
+        background: #1f1f1f;
+        color: #f5f5f5;
+    }
+
+    .table tbody td {
+        border-color: #1f1f1f;
+    }
+
+    .tickets-card .badge {
+        background: #1f1f1f;
+        color: #f5f5f5;
+    }
+
+    .badge-status {
+        background: #1b1b1b;
+        color: #f3f3f3;
+        border: 1px solid #2c2c2c;
+        border-radius: 18px;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        letter-spacing: 0.02em;
+    }
+
+    .badge-status .status-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        display: inline-block;
+        background: #888888;
+    }
+
+    .status-open-pill .status-dot { background: #63d471; }
+    .status-progress-pill .status-dot { background: #f7b955; }
+    .status-closed-pill .status-dot { background: #9aa0a6; }
+    .status-closed-resolved-pill .status-dot { background: #7ed957; }
+    .status-closed-no-pill .status-dot { background: #f47272; }
+
+    .badge-chip {
+        background: #1b1b1b;
+        color: #f0f0f0;
+        border: 1px solid #2b2b2b;
+        border-radius: 999px;
+        padding: 0.35rem 0.8rem;
+        font-size: 0.75rem;
+    }
+
+    .badge-chip-muted {
+        background: #161616;
+        color: #8b8b8b;
+        border: 1px dashed #2a2a2a;
+    }
+
+    .btn-edit {
+        background: #1d1d1d;
+        color: #f1f1f1;
+        border: 1px solid #2c2c2c;
+    }
+
+    .btn-edit:hover,
+    .btn-edit:focus {
+        background: #272727;
+        color: #ffffff;
+        border-color: #3a3a3a;
+    }
+
+    .btn-close-ticket {
+        background: #131313;
+        color: #f5f5f5;
+        border: 1px solid #2c2c2c;
+    }
+
+    .btn-close-ticket:hover,
+    .btn-close-ticket:focus {
+        background: #1d1d1d;
+        color: #ffffff;
+        border-color: #3a3a3a;
+    }
+</style>
+
+<div class="container-fluid px-4 py-3">
+    <!-- Success/Error Messages -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>✅ Success!</strong> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>❌ Error!</strong> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <h1 class="mb-2">🎫 Service Desk Dashboard</h1>
+        <p class="mb-0 opacity-75">Monitor and manage all incident tickets in real-time</p>
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-white bg-primary">
-                <div class="card-body">
-                    <h5 class="card-title">Total Tickets</h5>
-                    <h2 class="card-text">@ViewBag.TotalTickets</h2>
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card status-total">
+                <div class="card-body text-white">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-label">Total Tickets</div>
+                    <h2 class="stat-number">@ViewBag.TotalTickets</h2>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-success">
-                <div class="card-body">
-                    <h5 class="card-title">Open</h5>
-                    <h2 class="card-text">@(ViewBag.StatusCounts.ContainsKey("open") ? ViewBag.StatusCounts["open"] : 0)</h2>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card status-open">
+                <div class="card-body text-white">
+                    <div class="stat-icon">🟢</div>
+                    <div class="stat-label">Open Tickets</div>
+                    <h2 class="stat-number">@CountFor("open")</h2>
+                    <p class="mb-0">@PercentFor("open").ToString("0.0")%</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-warning">
-                <div class="card-body">
-                    <h5 class="card-title">In Progress</h5>
-                    <h2 class="card-text">@(ViewBag.StatusCounts.ContainsKey("in_progress") ? ViewBag.StatusCounts["in_progress"] : 0)</h2>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card status-progress">
+                <div class="card-body text-white">
+                    <div class="stat-icon">⚙️</div>
+                    <div class="stat-label">In Progress</div>
+                    <h2 class="stat-number">@CountFor("in_progress")</h2>
+                    <p class="mb-0">@PercentFor("in_progress").ToString("0.0")%</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card text-white bg-secondary">
-                <div class="card-body">
-                    <h5 class="card-title">Closed</h5>
-                    <h2 class="card-text">@(ViewBag.StatusCounts.ContainsKey("closed_resolved") ? ViewBag.StatusCounts["closed_resolved"] : 0)</h2>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card status-closed">
+                <div class="card-body text-white">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-label">Closed</div>
+                    <h2 class="stat-number">@closedTotalCount</h2>
+                    <p class="mb-0">@closedPercent.ToString("0.0")%</p>
+                    <small class="d-block text-white-50">Resolved: @closedResolvedCount (@PercentFor("closed_resolved").ToString("0.0")%) • Unresolved: @closedNoResolveCount (@PercentFor("closed_no_resolve").ToString("0.0")%)</small>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="search-filter-section">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white">🔍</span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search by Ticket ID, Title, or Employee...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select id="statusFilter" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="closed_resolved">Closed - Resolved</option>
+                    <option value="closed_no_resolve">Closed - No Resolve</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="departmentFilter" class="form-select">
+                    <option value="">All Departments</option>
+                    @if(ViewBag.DepartmentCounts != null)
+                    {
+                        foreach (var dept in ViewBag.DepartmentCounts.Keys)
+                        {
+                            <option value="@dept">@dept</option>
+                        }
+                    }
+                </select>
             </div>
         </div>
     </div>
@@ -51,66 +335,129 @@
     <!-- Tickets Table -->
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4>All Tickets</h4>
+            <div class="tickets-card card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">📋 All Tickets</h4>
+                    <span class="badge bg-primary" id="ticketCount">@ViewBag.TotalTickets Total</span>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     @if (Model != null && Model.Any())
                     {
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
+                            <table class="table table-hover mb-0" id="ticketsTable">
                                 <thead>
                                     <tr>
-                                        <th>Ticket ID</th>
+                                        <th style="width: 120px;">Ticket ID</th>
                                         <th>Title</th>
-                                        <th>Status</th>
+                                        <th style="width: 140px;">Status</th>
                                         <th>Employee</th>
-                                        <th>Department</th>
-                                        <th>Created</th>
-                                        <th>Assigned To</th>
-                                        <th>Actions</th>
+                                        <th style="width: 150px;">Department</th>
+                                        <th style="width: 160px;">Created</th>
+                                        <th style="width: 150px;">Assigned To</th>
+                                        <th style="width: 120px;" class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var ticket in Model)
                                     {
-                                        <tr>
-                                            <td>@ticket.TicketId</td>
-                                            <td>@ticket.Title</td>
+                                        <tr data-ticket-id="@ticket.TicketId" 
+                                            data-status="@ticket.Status" 
+                                            data-department="@ticket.Employee.Department.Name">
+                                            <td>
+                                                <strong class="text-primary">@ticket.TicketId</strong>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-bold">@ticket.Title</span>
+                                                    @if (!string.IsNullOrEmpty(ticket.Description) && ticket.Description.Length > 50)
+                                                    {
+                                                        <small class="text-muted">@ticket.Description.Substring(0, 50)...</small>
+                                                    }
+                                                    else if (!string.IsNullOrEmpty(ticket.Description))
+                                                    {
+                                                        <small class="text-muted">@ticket.Description</small>
+                                                    }
+                                                </div>
+                                            </td>
                                             <td>
                                                 @if (ticket.Status == "open")
                                                 {
-                                                    <span class="badge bg-success">Open</span>
+                                                    <span class="badge-status status-open-pill">
+                                                        <span class="status-dot"></span>
+                                                        Open
+                                                    </span>
                                                 }
                                                 else if (ticket.Status == "in_progress")
                                                 {
-                                                    <span class="badge bg-warning">In Progress</span>
+                                                    <span class="badge-status status-progress-pill">
+                                                        <span class="status-dot"></span>
+                                                        In Progress
+                                                    </span>
                                                 }
                                                 else if (ticket.Status == "closed_resolved")
                                                 {
-                                                    <span class="badge bg-secondary">Closed - Resolved</span>
+                                                    <span class="badge-status status-closed-resolved-pill">
+                                                        <span class="status-dot"></span>
+                                                        Closed · Resolved
+                                                    </span>
+                                                }
+                                                else if (ticket.Status == "closed_no_resolve")
+                                                {
+                                                    <span class="badge-status status-closed-no-pill">
+                                                        <span class="status-dot"></span>
+                                                        Closed · Unresolved
+                                                    </span>
                                                 }
                                                 else
                                                 {
-                                                    <span class="badge bg-dark">Closed - No Resolve</span>
+                                                    <span class="badge-status status-closed-pill">
+                                                        <span class="status-dot"></span>
+                                                        @ticket.Status
+                                                    </span>
                                                 }
                                             </td>
-                                            <td>@ticket.Employee.Name</td>
-                                            <td>@ticket.Employee.Department.Name</td>
-                                            <td>@ticket.DateCreated.ToLocalTime().ToString("MMM dd, yyyy HH:mm")</td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span>@ticket.Employee.Name</span>
+                                                    <small class="text-muted">@ticket.Employee.Email</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge-chip">@ticket.Employee.Department.Name</span>
+                                            </td>
+                                            <td>
+                                                <small>@ticket.DateCreated.ToLocalTime().ToString("MMM dd, yyyy")</small><br />
+                                                <small class="text-muted">@ticket.DateCreated.ToLocalTime().ToString("HH:mm")</small>
+                                            </td>
                                             <td>
                                                 @if (ticket.AssignedTo != null)
                                                 {
-                                                    @ticket.AssignedTo.Name
+                                                    <span class="badge-chip">👤 @ticket.AssignedTo.Name</span>
                                                 }
                                                 else
                                                 {
-                                                    <span class="text-muted">Unassigned</span>
+                                                    <span class="badge-chip badge-chip-muted">⚠️ Unassigned</span>
                                                 }
                                             </td>
-                                            <td>
-                                                <a href="@Url.Action("Details", "Ticket", new { id = ticket.Id })" class="btn btn-sm btn-info">View Details</a>
+                                            <td class="text-center">
+                                                <div class="btn-group" role="group">
+                                                    <a href="@Url.Action("Edit", "Ticket", new { id = ticket.Id })" 
+                                                       class="btn btn-sm btn-action btn-edit"
+                                                       title="Edit Ticket">
+                                                        ✏️ Edit
+                                                    </a>
+                                                    @if (ticket.Status != "closed_resolved" && ticket.Status != "closed_no_resolve")
+                                                    {
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-action btn-close-ticket close-ticket-btn"
+                                                                data-ticket-id="@ticket.Id"
+                                                                data-ticket-number="@ticket.TicketId"
+                                                                data-reason="resolved"
+                                                                title="Close as Resolved">
+                                                            ✅
+                                                        </button>
+                                                    }
+                                                </div>
                                             </td>
                                         </tr>
                                     }
@@ -120,8 +467,10 @@
                     }
                     else
                     {
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i> No tickets found in the system.
+                        <div class="p-5 text-center">
+                            <div class="mb-3" style="font-size: 4rem;">📭</div>
+                            <h5 class="text-muted">No tickets found in the system</h5>
+                            <p class="text-muted">Tickets will appear here once they are created</p>
                         </div>
                     }
                 </div>
@@ -129,3 +478,98 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('keyup', filterTable);
+        document.getElementById('statusFilter').addEventListener('change', filterTable);
+        document.getElementById('departmentFilter').addEventListener('change', filterTable);
+
+        function filterTable() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const statusValue = document.getElementById('statusFilter').value.toLowerCase();
+            const departmentValue = document.getElementById('departmentFilter').value.toLowerCase();
+            
+            const table = document.getElementById('ticketsTable');
+            const rows = table.getElementsByTagName('tr');
+            let visibleCount = 0;
+
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const ticketId = row.getAttribute('data-ticket-id').toLowerCase();
+                const status = row.getAttribute('data-status').toLowerCase();
+                const department = row.getAttribute('data-department').toLowerCase();
+                const text = row.textContent.toLowerCase();
+
+                const matchesSearch = text.includes(searchValue);
+                const matchesStatus = statusValue === '' || status === statusValue;
+                const matchesDepartment = departmentValue === '' || department === departmentValue;
+
+                if (matchesSearch && matchesStatus && matchesDepartment) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+
+            // Update count badge
+            document.getElementById('ticketCount').textContent = visibleCount + ' Tickets';
+        }
+
+        // Close ticket function using event delegation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add event listener to all close ticket buttons
+            document.querySelectorAll('.close-ticket-btn').forEach(function(button) {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const ticketId = this.getAttribute('data-ticket-id');
+                    const ticketNumber = this.getAttribute('data-ticket-number');
+                    const reason = this.getAttribute('data-reason');
+                    const reasonText = reason === 'resolved' ? 'Resolved' : 'No Resolve';
+                    
+                    console.log('Close button clicked:', {ticketId, ticketNumber, reason});
+                    
+                    if (confirm('Are you sure you want to close ticket ' + ticketNumber + ' as ' + reasonText + '?')) {
+                        // Create a form and submit it
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '@Url.Action("CloseTicket", "Ticket")';
+                        
+                        const idInput = document.createElement('input');
+                        idInput.type = 'hidden';
+                        idInput.name = 'id';
+                        idInput.value = ticketId;
+                        form.appendChild(idInput);
+                        
+                        const reasonInput = document.createElement('input');
+                        reasonInput.type = 'hidden';
+                        reasonInput.name = 'reason';
+                        reasonInput.value = reason;
+                        form.appendChild(reasonInput);
+                        
+                        // Add anti-forgery token
+                        const token = document.querySelector('input[name="__RequestVerificationToken"]');
+                        if (token) {
+                            const tokenInput = document.createElement('input');
+                            tokenInput.type = 'hidden';
+                            tokenInput.name = '__RequestVerificationToken';
+                            tokenInput.value = token.value;
+                            form.appendChild(tokenInput);
+                            console.log('Anti-forgery token added:', token.value.substring(0, 20) + '...');
+                        } else {
+                            console.error('Anti-forgery token not found!');
+                        }
+                        
+                        console.log('Submitting form to:', form.action);
+                        console.log('Form data:', {id: ticketId, reason: reason});
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+}
