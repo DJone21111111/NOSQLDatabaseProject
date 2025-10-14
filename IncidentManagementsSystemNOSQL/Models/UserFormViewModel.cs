@@ -6,9 +6,8 @@ namespace IncidentManagementsSystemNOSQL.Models
     {
         public string? Id { get; set; }
 
-        [Required]
-        [Display(Name = "Employee ID")]
-        public string EmployeeId { get; set; } = null!;
+    [Display(Name = "Employee ID")]
+    public string? EmployeeId { get; set; }
 
         [Required]
         public string Name { get; set; } = null!;

@@ -101,5 +101,17 @@ namespace IncidentManagementsSystemNOSQL.Service
                 throw new Exception($"An error occurred while deleting user {id}.", ex);
             }
         }
+
+        public string GetNextEmployeeId()
+        {
+            try
+            {
+                return _userRepository.GetNextEmployeeId();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while generating the next employee ID.", ex);
+            }
+        }
     }
 }

@@ -23,9 +23,9 @@
                         <h5 class="section-title">👤 Personal Information</h5>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label asp-for="EmployeeId" class="form-label">Employee ID *</label>
-                                <input asp-for="EmployeeId" class="form-control" placeholder="e.g. EMP-1001" />
-                                <span asp-validation-for="EmployeeId" class="text-danger"></span>
+                                <label class="form-label">Employee ID</label>
+                                <input type="text" class="form-control" value="Will be generated automatically" disabled />
+                                <small class="text-muted">The next sequential ID is assigned when the account is created.</small>
                             </div>
                             <div class="col-md-6">
                                 <label asp-for="UserName" class="form-label">Username *</label>

@@ -14,6 +14,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         void AddUser(User user);
         void UpdateUser(User user);
         void DeleteById(string id);
+        string GetNextEmployeeId();
         void EnsureIndexes();
     }
 }
