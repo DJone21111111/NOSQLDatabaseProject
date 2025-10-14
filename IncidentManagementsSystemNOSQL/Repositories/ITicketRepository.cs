@@ -10,6 +10,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         List<Ticket> GetAll();
 
         List<Ticket> GetByStatus(string status);
+    List<Ticket> GetByAssignedAgent(string agentEmployeeId);
 
         // Might need to filter by time range in the future. We are not using it for now.
         List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);
@@ -21,6 +22,11 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         // AGGREGATION Operations
         Dictionary<string, int> GetTicketCountsByStatus();
         Dictionary<string, int> GetTicketCountsByDepartment();
+        Dictionary<string, int> GetTicketCountsByStatusForEmployee(string employeeId);
+
+        string GetNextTicketId();
+        int GetNextServiceDeskAgentIndex(int agentCount);
+        void SetAssignedAgent(string ticketId, CommentAuthorEmbedded agent);
 
         // SETUP Operation
         void EnsureIndexes();

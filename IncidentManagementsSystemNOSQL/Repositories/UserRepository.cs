@@ -66,6 +66,20 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
+        public List<User> GetServiceDeskAgents()
+        {
+            try
+            {
+                return _users.Find(u => u.IsActive && u.Role == "service_desk")
+                    .SortBy(u => u.EmployeeId)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while retrieving service desk agents", ex);
+            }
+        }
+
         public void SetPasswordHash(string id, string newPasswordHash)
         {
             try

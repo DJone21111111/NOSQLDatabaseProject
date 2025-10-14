@@ -1,4 +1,5 @@
 @model List<IncidentManagementsSystemNOSQL.Models.Ticket>
+@using System
 
 @{
     ViewData["Title"] = "Service Desk Dashboard";
@@ -11,6 +12,14 @@
     var closedNoResolveCount = CountFor("closed_no_resolve");
     var closedTotalCount = closedResolvedCount + closedNoResolveCount;
     double closedPercent = totalTickets > 0 ? Math.Round((double)closedTotalCount / totalTickets * 100, 1) : 0;
+    var agentName = ViewBag.AgentName as string ?? string.Empty;
+    var agentId = ViewBag.AgentId as string ?? string.Empty;
+    var agentEmail = ViewBag.AgentEmail as string ?? string.Empty;
+    var hasAgentContext = ViewBag.HasAgentContext is bool flag && flag;
+    var agentTicketCount = ViewBag.AgentTicketCount is int myCount ? myCount : 0;
+    var assignedBlurb = hasAgentContext && !string.IsNullOrWhiteSpace(agentName)
+        ? $"Service desk queue for {agentName}."
+        : "Monitor and manage all incident tickets in real-time";
 }
 
 @Html.AntiForgeryToken()
@@ -23,6 +32,42 @@
         border-radius: 12px;
         margin-bottom: 2rem;
         box-shadow: 0 18px 30px rgba(0,0,0,0.35);
+    }
+
+    .profile-chip {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        padding: 0.4rem 1rem;
+        display: inline-flex;
+        gap: 0.75rem;
+        align-items: center;
+        font-size: 0.85rem;
+    }
+
+    .profile-chip span {
+        color: #d9d9d9;
+    }
+
+    .assignment-switch .form-check-label {
+        color: #d6d6d6;
+        font-weight: 500;
+        margin-left: 0.5rem;
+    }
+
+    .assignment-switch .form-check-input:checked {
+        background-color: #2f6f4b;
+        border-color: #2f6f4b;
+    }
+
+    .badge-chip-self {
+        background: linear-gradient(135deg, #1f3c2f 0%, #153022 100%);
+        border-color: #2f5f48;
+    }
+
+    .badge-chip .self-tag {
+        color: #7ed957;
+        font-weight: 600;
+        margin-left: 0.35rem;
     }
     
     .stat-card {
@@ -251,8 +296,23 @@
 
     <!-- Dashboard Header -->
     <div class="dashboard-header">
-        <h1 class="mb-2">🎫 Service Desk Dashboard</h1>
-        <p class="mb-0 opacity-75">Monitor and manage all incident tickets in real-time</p>
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h1 class="mb-2">🎫 Service Desk Dashboard</h1>
+                <p class="mb-0 opacity-75">@assignedBlurb</p>
+            </div>
+            @if (hasAgentContext)
+            {
+                <div class="profile-chip">
+                    <span>👤 @agentName</span>
+                    <span>🆔 @agentId</span>
+                    @if (!string.IsNullOrWhiteSpace(agentEmail))
+                    {
+                        <span>✉️ @agentEmail</span>
+                    }
+                </div>
+            }
+        </div>
     </div>
 
     <!-- Statistics Cards -->
@@ -263,6 +323,10 @@
                     <div class="stat-icon">📊</div>
                     <div class="stat-label">Total Tickets</div>
                     <h2 class="stat-number">@ViewBag.TotalTickets</h2>
+                    @if (hasAgentContext)
+                    {
+                        <small class="d-block text-white-50">Assigned to you: @agentTicketCount</small>
+                    }
                 </div>
             </div>
         </div>
@@ -301,14 +365,14 @@
 
     <!-- Search and Filter Section -->
     <div class="search-filter-section">
-        <div class="row align-items-center">
-            <div class="col-md-6">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-4 col-md-6">
                 <div class="input-group">
                     <span class="input-group-text bg-white">🔍</span>
-                    <input type="text" id="searchInput" class="form-control" placeholder="Search by Ticket ID, Title, or Employee...">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search tickets by ID, title, or employee...">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-3 col-md-6">
                 <select id="statusFilter" class="form-select">
                     <option value="">All Statuses</option>
                     <option value="open">Open</option>
@@ -317,7 +381,7 @@
                     <option value="closed_no_resolve">Closed - No Resolve</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-3 col-md-6">
                 <select id="departmentFilter" class="form-select">
                     <option value="">All Departments</option>
                     @if(ViewBag.DepartmentCounts != null)
@@ -329,6 +393,15 @@
                     }
                 </select>
             </div>
+            @if (hasAgentContext)
+            {
+                <div class="col-lg-2 col-md-6 d-flex align-items-center">
+                    <div class="form-check form-switch assignment-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="assignedSwitch">
+                        <label class="form-check-label" for="assignedSwitch">My tickets (@agentTicketCount)</label>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 
@@ -338,7 +411,7 @@
             <div class="tickets-card card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">📋 All Tickets</h4>
-                    <span class="badge bg-primary" id="ticketCount">@ViewBag.TotalTickets Total</span>
+                    <span class="badge bg-primary" id="ticketCount">@ViewBag.TotalTickets Tickets</span>
                 </div>
                 <div class="card-body p-0">
                     @if (Model != null && Model.Any())
@@ -362,7 +435,8 @@
                                     {
                                         <tr data-ticket-id="@ticket.TicketId" 
                                             data-status="@ticket.Status" 
-                                            data-department="@ticket.Employee.Department.Name">
+                                            data-department="@((ticket.Employee?.Department?.Name ?? "Unknown Department"))"
+                                            data-assigned-state="@(ticket.AssignedTo == null ? "unassigned" : (hasAgentContext && !string.IsNullOrWhiteSpace(agentId) && string.Equals(ticket.AssignedTo.EmployeeId, agentId, StringComparison.OrdinalIgnoreCase) ? "mine" : "other"))">
                                             <td>
                                                 <strong class="text-primary">@ticket.TicketId</strong>
                                             </td>
@@ -418,12 +492,12 @@
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-column">
-                                                    <span>@ticket.Employee.Name</span>
-                                                    <small class="text-muted">@ticket.Employee.Email</small>
+                                                    <span>@(ticket.Employee?.Name ?? "Unknown Employee")</span>
+                                                    <small class="text-muted">@((ticket.Employee?.Email ?? "No email on file"))</small>
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge-chip">@ticket.Employee.Department.Name</span>
+                                                <span class="badge-chip">@((ticket.Employee?.Department?.Name ?? "Unknown Department"))</span>
                                             </td>
                                             <td>
                                                 <small>@ticket.DateCreated.ToLocalTime().ToString("MMM dd, yyyy")</small><br />
@@ -432,7 +506,14 @@
                                             <td>
                                                 @if (ticket.AssignedTo != null)
                                                 {
-                                                    <span class="badge-chip">👤 @ticket.AssignedTo.Name</span>
+                                                    var isMine = hasAgentContext && !string.IsNullOrWhiteSpace(agentId) && string.Equals(ticket.AssignedTo.EmployeeId, agentId, StringComparison.OrdinalIgnoreCase);
+                                                    <span class="badge-chip @(isMine ? "badge-chip-self" : string.Empty)">
+                                                        👤 @ticket.AssignedTo.Name
+                                                        @if (isMine)
+                                                        {
+                                                            <span class="self-tag">(You)</span>
+                                                        }
+                                                    </span>
                                                 }
                                                 else
                                                 {
@@ -469,8 +550,15 @@
                     {
                         <div class="p-5 text-center">
                             <div class="mb-3" style="font-size: 4rem;">📭</div>
-                            <h5 class="text-muted">No tickets found in the system</h5>
-                            <p class="text-muted">Tickets will appear here once they are created</p>
+                            <h5 class="text-muted">No tickets in the system right now</h5>
+                            @if (hasAgentContext && !string.IsNullOrWhiteSpace(agentName))
+                            {
+                                <p class="text-muted">New incidents, including those assigned to @agentName, will appear here automatically.</p>
+                            }
+                            else
+                            {
+                                <p class="text-muted">Tickets will appear here as soon as incidents are logged.</p>
+                            }
                         </div>
                     }
                 </div>
@@ -481,32 +569,52 @@
 
 @section Scripts {
     <script>
-        // Search functionality
-        document.getElementById('searchInput').addEventListener('keyup', filterTable);
-        document.getElementById('statusFilter').addEventListener('change', filterTable);
-        document.getElementById('departmentFilter').addEventListener('change', filterTable);
+        // Search and filter functionality
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const departmentFilter = document.getElementById('departmentFilter');
+    const assignedSwitch = document.getElementById('assignedSwitch');
+
+        if (searchInput) {
+            searchInput.addEventListener('keyup', filterTable);
+        }
+        if (statusFilter) {
+            statusFilter.addEventListener('change', filterTable);
+        }
+        if (departmentFilter) {
+            departmentFilter.addEventListener('change', filterTable);
+        }
+        if (assignedSwitch) {
+            assignedSwitch.addEventListener('change', filterTable);
+        }
 
         function filterTable() {
-            const searchValue = document.getElementById('searchInput').value.toLowerCase();
-            const statusValue = document.getElementById('statusFilter').value.toLowerCase();
-            const departmentValue = document.getElementById('departmentFilter').value.toLowerCase();
-            
             const table = document.getElementById('ticketsTable');
+            if (!table) {
+                return;
+            }
+
+            const searchValue = searchInput ? searchInput.value.toLowerCase() : '';
+            const statusValue = statusFilter ? statusFilter.value.toLowerCase() : '';
+            const departmentValue = departmentFilter ? departmentFilter.value.toLowerCase() : '';
+            const showMineOnly = assignedSwitch ? assignedSwitch.checked : false;
+
             const rows = table.getElementsByTagName('tr');
             let visibleCount = 0;
 
             for (let i = 1; i < rows.length; i++) {
                 const row = rows[i];
-                const ticketId = row.getAttribute('data-ticket-id').toLowerCase();
-                const status = row.getAttribute('data-status').toLowerCase();
-                const department = row.getAttribute('data-department').toLowerCase();
+                const status = (row.getAttribute('data-status') || '').toLowerCase();
+                const department = (row.getAttribute('data-department') || '').toLowerCase();
+                const assignedState = (row.getAttribute('data-assigned-state') || '').toLowerCase();
                 const text = row.textContent.toLowerCase();
 
                 const matchesSearch = text.includes(searchValue);
                 const matchesStatus = statusValue === '' || status === statusValue;
                 const matchesDepartment = departmentValue === '' || department === departmentValue;
+                const matchesAssigned = !showMineOnly || assignedState === 'mine';
 
-                if (matchesSearch && matchesStatus && matchesDepartment) {
+                if (matchesSearch && matchesStatus && matchesDepartment && matchesAssigned) {
                     row.style.display = '';
                     visibleCount++;
                 } else {
@@ -515,7 +623,10 @@
             }
 
             // Update count badge
-            document.getElementById('ticketCount').textContent = visibleCount + ' Tickets';
+            const ticketCountBadge = document.getElementById('ticketCount');
+            if (ticketCountBadge) {
+                ticketCountBadge.textContent = visibleCount + ' Tickets';
+            }
         }
 
         // Close ticket function using event delegation

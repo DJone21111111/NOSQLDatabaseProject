@@ -8,6 +8,7 @@ namespace IncidentManagementsSystemNOSQL.Service
         Ticket? GetById(string id);
         List<Ticket> GetByUserId(string userId);
         List<Ticket> GetByStatus(string status);
+    List<Ticket> GetByAssignedAgent(string agentEmployeeId);
 
         List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);
 
@@ -19,5 +20,8 @@ namespace IncidentManagementsSystemNOSQL.Service
         // AGGREGATION Operations
         Dictionary<string, int> GetTicketCountsByStatus();
         Dictionary<string, int> GetTicketCountsByDepartment();
+        Dictionary<string, int> GetTicketCountsByStatusForEmployee(string employeeId);
+
+        string GetNextTicketId();
     }
 }
