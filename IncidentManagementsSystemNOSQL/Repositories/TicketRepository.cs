@@ -24,7 +24,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             try
             {
                 var objectId = ObjectId.Parse(id); // Convert string to ObjectId
-                return _tickets.Find(t => t.Id == objectId).FirstOrDefault();
+                return _tickets.Find(t => t.Id == id).FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -101,7 +101,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             try
             {
                 var objectId = ObjectId.Parse(id); // Convert string to ObjectId
-                _tickets.ReplaceOne(t => t.Id == objectId, updated);
+                _tickets.ReplaceOne(t => t.Id == id, updated);
             }
             catch (Exception ex)
             {
@@ -114,7 +114,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             try
             {
                 var objectId = ObjectId.Parse(id); // Convert string to ObjectId
-                _tickets.DeleteOne(t => t.Id == objectId);
+                _tickets.DeleteOne(t => t.Id == id);
             }
             catch (Exception ex)
             {

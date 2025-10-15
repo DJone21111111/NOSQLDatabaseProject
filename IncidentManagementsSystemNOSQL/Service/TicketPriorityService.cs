@@ -18,8 +18,9 @@ namespace IncidentManagementsSystemNOSQL.Service
         public FilterDefinition<Ticket> BuildPriorityFilter(Enums.PriorityLevel priority)
         {
             var filter = Builders<Ticket>.Filter;
-            return filter.Eq(t => t.Priority, priority);
+            return filter.Eq("priority", priority.ToString().ToLower());
         }
+
 
         public bool TryParsePriority(string? input, out Enums.PriorityLevel priority)
         {

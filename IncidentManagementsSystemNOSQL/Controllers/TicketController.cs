@@ -21,7 +21,6 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         }
         public IActionResult Index([FromQuery] string? priority = null)
         {
-            // TEMP: no try/catch so you get the full yellow-page stack in dev
             if (!string.IsNullOrWhiteSpace(priority) &&
                 _priorityService.TryParsePriority(priority, out var p))
             {
@@ -97,7 +96,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Edit(string id, Ticket ticket)
         {
-            if (!ObjectId.TryParse(id, out var objectId) || objectId != ticket.Id)
+            if (!ObjectId.TryParse(id, out var objectId) || id != ticket.Id)
                 return BadRequest();
 
             if (!ModelState.IsValid) return View(ticket);

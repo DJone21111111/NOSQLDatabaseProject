@@ -92,7 +92,7 @@ namespace IncidentManagementsSystemNOSQL.Service
 
         public void UpdateTicket(string id, Ticket updatedTicket)
         {
-            updatedTicket.Id = ObjectId.Parse(id);
+            updatedTicket.Id = id; // Ensure the ID remains unchanged
 
             try
             {
