@@ -19,6 +19,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
         public TicketsApiController(ITicketService ticketService, ILogger<TicketsApiController> logger)
         {
             _ticketService = ticketService;
+            _logger = logger;
         }
 
     /// <summary>
