@@ -5,8 +5,8 @@ namespace IncidentManagementsSystemNOSQL.Models
     [BsonIgnoreExtraElements]
     public class DepartmentEmbedded
     {
-        [BsonElement("departmentId")]
-        public string DepartmentId { get; set; } = null!;
+    [BsonElement("departmentId")]
+    public string? DepartmentId { get; set; }
         
         [BsonElement("name")]
         public string Name { get; set; } = null!;

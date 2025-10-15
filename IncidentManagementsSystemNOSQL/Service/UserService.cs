@@ -60,6 +60,18 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
+        public List<User> GetServiceDeskAgents()
+        {
+            try
+            {
+                return _userRepository.GetServiceDeskAgents();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while retrieving service desk agents.", ex);
+            }
+        }
+
         public void AddUser(User user)
         {
             try
@@ -99,6 +111,18 @@ namespace IncidentManagementsSystemNOSQL.Service
             catch (Exception ex)
             {
                 throw new Exception($"An error occurred while deleting user {id}.", ex);
+            }
+        }
+
+        public string GetNextEmployeeId()
+        {
+            try
+            {
+                return _userRepository.GetNextEmployeeId();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while generating the next employee ID.", ex);
             }
         }
     }

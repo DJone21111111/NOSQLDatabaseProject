@@ -19,5 +19,8 @@ namespace IncidentManagementsSystemNOSQL.Service
         // AGGREGATION Operations
         Dictionary<string, int> GetTicketCountsByStatus();
         Dictionary<string, int> GetTicketCountsByDepartment();
+        Dictionary<string, int> GetTicketCountsByStatusForEmployee(string employeeId);
+
+        string GetNextTicketId();
     }
 }

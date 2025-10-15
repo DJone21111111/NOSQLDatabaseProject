@@ -1,0 +1,391 @@
+@model IncidentManagementsSystemNOSQL.Models.EmployeeDashboardViewModel
+
+@{
+	var dashboard = Model ?? new IncidentManagementsSystemNOSQL.Models.EmployeeDashboardViewModel();
+	ViewData["Title"] = "My Tickets";
+	var hasEmployee = !string.IsNullOrWhiteSpace(dashboard.EmployeeId);
+	var pendingPercent = dashboard.PendingPercent;
+	var resolvedPercent = dashboard.ResolvedPercent;
+	var closedNoResolvePercent = dashboard.ClosedNoResolvePercent;
+}
+
+<style>
+	.dashboard-header {
+		background: linear-gradient(135deg, #141414 0%, #1f1f1f 100%);
+		color: #f7f7f7;
+		padding: 2rem;
+		border-radius: 12px;
+		margin-bottom: 2rem;
+		box-shadow: 0 18px 30px rgba(0,0,0,0.35);
+	}
+
+	.profile-chip {
+		background: rgba(255, 255, 255, 0.08);
+		border-radius: 999px;
+		padding: 0.4rem 1rem;
+		display: inline-flex;
+		gap: 0.75rem;
+		align-items: center;
+		font-size: 0.85rem;
+	}
+
+	.profile-chip span {
+		color: #d9d9d9;
+	}
+
+	.stat-card {
+		border: none;
+		border-radius: 16px;
+		background: #111111;
+		color: #f5f5f5;
+		box-shadow: 0 25px 40px rgba(0,0,0,0.45);
+		transition: transform 0.3s ease, box-shadow 0.3s ease;
+		overflow: hidden;
+	}
+
+	.stat-card:hover {
+		transform: translateY(-6px);
+		box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+	}
+
+	.stat-card .card-body {
+		padding: 1.75rem;
+	}
+
+	.stat-icon {
+		font-size: 2.5rem;
+		opacity: 0.65;
+		float: right;
+	}
+
+	.stat-number {
+		font-size: 2.6rem;
+		font-weight: 700;
+		margin: 0;
+		color: #ffffff;
+	}
+
+	.stat-label {
+		font-size: 0.875rem;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		opacity: 0.7;
+		color: #d0d0d0;
+	}
+
+	.tickets-card {
+		border: none;
+		border-radius: 16px;
+		background: #121212;
+		color: #f3f3f3;
+		box-shadow: 0 25px 50px rgba(0,0,0,0.55);
+	}
+
+	.tickets-card .card-header {
+		background: #1b1b1b;
+		border-bottom: 1px solid #282828;
+		padding: 1.25rem 1.5rem;
+		border-radius: 16px 16px 0 0;
+	}
+
+	.table thead th {
+		border-bottom: 1px solid #2c2c2c;
+		font-weight: 600;
+		text-transform: uppercase;
+		font-size: 0.75rem;
+		letter-spacing: 0.5px;
+		color: #d6d6d6;
+		background: #181818;
+	}
+
+	.table tbody tr {
+		transition: background-color 0.2s ease;
+		background-color: #141414;
+		color: #f5f5f5;
+		border-color: #1f1f1f;
+	}
+
+	.table-hover tbody tr:hover {
+		background-color: #1c1c1c;
+	}
+
+	.table-hover tbody tr:hover td,
+	.table-hover tbody tr:hover th {
+		color: #f5f5f5;
+	}
+
+	.table-hover tbody tr:hover .text-muted {
+		color: #c2c2c2 !important;
+	}
+
+	.badge-status {
+		background: #1b1b1b;
+		color: #f3f3f3;
+		border: 1px solid #2c2c2c;
+		border-radius: 18px;
+		padding: 0.35rem 0.75rem;
+		font-size: 0.75rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		letter-spacing: 0.02em;
+	}
+
+	.badge-status .status-dot {
+		width: 0.55rem;
+		height: 0.55rem;
+		border-radius: 50%;
+		display: inline-block;
+		background: #888888;
+	}
+
+	.status-open-pill .status-dot { background: #63d471; }
+	.status-progress-pill .status-dot { background: #f7b955; }
+	.status-closed-resolved-pill .status-dot { background: #7ed957; }
+	.status-closed-no-pill .status-dot { background: #f47272; }
+
+	.btn-dark-gradient {
+		background: linear-gradient(135deg, #111111 0%, #232323 100%);
+		border: 1px solid #2d2d2d;
+		color: #ffffff;
+		font-weight: 600;
+		padding: .6rem 1.6rem;
+		border-radius: 999px;
+		transition: transform .2s ease, box-shadow .2s ease;
+	}
+
+	.btn-dark-gradient:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 12px 24px rgba(0,0,0,0.45);
+		color: #ffffff;
+	}
+
+	.empty-state {
+		padding: 3rem 1rem;
+		text-align: center;
+		color: #bcbcbc;
+	}
+
+	.empty-state i {
+		font-size: 3rem;
+		display: block;
+		margin-bottom: 1rem;
+		opacity: 0.6;
+	}
+</style>
+
+<div class="container-fluid px-4 py-3">
+	@if (TempData["SuccessMessage"] != null)
+	{
+		<div class="alert alert-success alert-dismissible fade show" role="alert">
+			<strong>✅ Success!</strong> @TempData["SuccessMessage"]
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+	}
+	@if (TempData["ErrorMessage"] != null)
+	{
+		<div class="alert alert-danger alert-dismissible fade show" role="alert">
+			<strong>❌ Error!</strong> @TempData["ErrorMessage"]
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+	}
+
+	<div class="dashboard-header">
+		<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+			<div>
+				<h1 class="mb-2">🎟️ My Tickets</h1>
+				<p class="mb-0 opacity-75">Track progress on every issue you've reported.</p>
+			</div>
+			@if (hasEmployee)
+			{
+				<div class="profile-chip">
+					<span>👤 @dashboard.EmployeeName</span>
+					<span>💼 @dashboard.DepartmentName</span>
+					<span>🆔 @dashboard.EmployeeId</span>
+				</div>
+			}
+		</div>
+	</div>
+
+	@if (!hasEmployee)
+	{
+		<div class="empty-state bg-dark rounded-4">
+			<i class="bi bi-emoji-neutral"></i>
+			<h4>No employee profile selected</h4>
+			<p class="mb-0">Once your account is set up, you'll see your tickets and stats right here.</p>
+		</div>
+	}
+	else
+	{
+		<div class="row g-4 mb-4">
+			<div class="col-xl-4 col-md-6">
+				<div class="stat-card">
+					<div class="card-body text-white">
+						<div class="stat-icon">⏳</div>
+						<div class="stat-label">Open / In Progress</div>
+						<h2 class="stat-number">@dashboard.PendingCount</h2>
+						<p class="mb-0">@pendingPercent.ToString("0.0")%</p>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-4 col-md-6">
+				<div class="stat-card">
+					<div class="card-body text-white">
+						<div class="stat-icon">✅</div>
+						<div class="stat-label">Resolved Tickets</div>
+						<h2 class="stat-number">@dashboard.ClosedResolvedCount</h2>
+						<p class="mb-0">@resolvedPercent.ToString("0.0")%</p>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-4 col-md-6">
+				<div class="stat-card">
+					<div class="card-body text-white">
+						<div class="stat-icon">⚠️</div>
+						<div class="stat-label">Closed Without Resolve</div>
+						<h2 class="stat-number">@dashboard.ClosedNoResolveCount</h2>
+						<p class="mb-0">@closedNoResolvePercent.ToString("0.0")%</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+			<div>
+				<h4 class="mb-1">📋 Tickets You've Reported</h4>
+				<small class="text-muted">Total tickets: @dashboard.TotalTickets</small>
+			</div>
+			<div>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-dark-gradient" asp-action="CreateTicket" asp-route-employeeId="@dashboard.EmployeeId">
+						✍️ Report an Issue
+					</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="tickets-card card">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h4 class="mb-0">My Ticket History</h4>
+				<span class="badge bg-primary">@dashboard.TotalTickets total</span>
+			</div>
+			<div class="card-body p-0">
+				@if (dashboard.Tickets != null && dashboard.Tickets.Any())
+				{
+					<div class="table-responsive">
+						<table class="table table-hover mb-0">
+							<thead>
+								<tr>
+									<th style="width: 120px;">Ticket ID</th>
+									<th>Title</th>
+									<th style="width: 160px;">Status</th>
+									<th style="width: 170px;">Assigned To</th>
+									<th style="width: 160px;">Created</th>
+									<th style="width: 160px;">Last Updated</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (var ticket in dashboard.Tickets.OrderByDescending(t => t.DateCreated))
+								{
+									<tr>
+										<td><strong class="text-primary">@ticket.TicketId</strong></td>
+										<td>
+											<div class="d-flex flex-column">
+												<span class="fw-bold">@ticket.Title</span>
+												@if (!string.IsNullOrEmpty(ticket.Description))
+												{
+													var summary = ticket.Description.Length > 80 ? ticket.Description.Substring(0, 80) + "..." : ticket.Description;
+													<small class="text-muted">@summary</small>
+												}
+											</div>
+										</td>
+										<td>
+											@if (ticket.Status == "open")
+											{
+												<span class="badge-status status-open-pill">
+													<span class="status-dot"></span>
+													Open
+												</span>
+											}
+											else if (ticket.Status == "in_progress")
+											{
+												<span class="badge-status status-progress-pill">
+													<span class="status-dot"></span>
+													In Progress
+												</span>
+											}
+											else if (ticket.Status == "closed_resolved")
+											{
+												<span class="badge-status status-closed-resolved-pill">
+													<span class="status-dot"></span>
+													Closed - Resolved
+												</span>
+											}
+											else if (ticket.Status == "closed_no_resolve")
+											{
+												<span class="badge-status status-closed-no-pill">
+													<span class="status-dot"></span>
+													Closed - Not Resolved
+												</span>
+											}
+											else
+											{
+												<span class="badge-status">
+													<span class="status-dot"></span>
+													@ticket.Status
+												</span>
+											}
+										</td>
+										<td>
+											@if (ticket.AssignedTo != null)
+											{
+												<span class="badge-status">
+													<span class="status-dot"></span>
+													@ticket.AssignedTo.Name
+												</span>
+											}
+											else
+											{
+												<span class="badge-status status-closed-no-pill">
+													<span class="status-dot"></span>
+													Not yet assigned
+												</span>
+											}
+										</td>
+										<td>
+											<small>@ticket.DateCreated.ToLocalTime().ToString("MMM dd, yyyy")</small><br />
+											<small class="text-muted">@ticket.DateCreated.ToLocalTime().ToString("HH:mm")</small>
+										</td>
+										<td>
+											@if (ticket.DateClosed.HasValue)
+											{
+												<small>@ticket.DateClosed.Value.ToLocalTime().ToString("MMM dd, yyyy")</small><br />
+												<small class="text-muted">@ticket.DateClosed.Value.ToLocalTime().ToString("HH:mm")</small>
+											}
+											else
+											{
+												<small class="text-muted">Still active</small>
+											}
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+				else
+				{
+					<div class="empty-state">
+						<i class="bi bi-inbox"></i>
+						<h5>No tickets yet</h5>
+						<p class="mb-0">Start by reporting an issue so the service desk can help you.</p>
+					</div>
+				}
+			</div>
+		</div>
+	}
+</div>
+
+@section Scripts {
+	@{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

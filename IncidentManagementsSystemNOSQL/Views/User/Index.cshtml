@@ -1,0 +1,353 @@
+@model List<IncidentManagementsSystemNOSQL.Models.User>
+
+@{
+    ViewData["Title"] = "Team Directory";
+}
+
+<div class="container-fluid px-4 py-3">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>✅ Success!</strong> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>❌ Error!</strong> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <style>
+        .users-header {
+            background: linear-gradient(135deg, #141414 0%, #1f1f1f 100%);
+            color: #f7f7f7;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 18px 30px rgba(0,0,0,0.35);
+        }
+
+        .users-header h1 {
+            font-weight: 700;
+            margin-bottom: .5rem;
+        }
+
+        .toolbar-card {
+            background: #161616;
+            border-radius: 12px;
+            box-shadow: 0 18px 30px rgba(0,0,0,0.35);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #f3f3f3;
+        }
+
+        .table-shell {
+            background: #121212;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.55);
+            overflow: hidden;
+        }
+
+        .table-shell .card-header {
+            background: #1b1b1b;
+            border-bottom: 1px solid #272727;
+            padding: 1.25rem 1.5rem;
+            color: #f5f5f5;
+        }
+
+        table.users-table thead th {
+            border-bottom: 1px solid #272727;
+            background: #181818;
+            color: #d8d8d8;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            font-size: .75rem;
+        }
+
+        table.users-table tbody tr {
+            transition: background-color .2s ease;
+            background: #141414;
+            color: #f4f4f4;
+            border-color: #1f1f1f;
+        }
+
+        table.users-table tbody tr:hover {
+            background: #1c1c1c;
+        }
+
+        table.users-table tbody tr:hover td,
+        table.users-table tbody tr:hover th {
+            color: #f4f4f4;
+        }
+
+        table.users-table tbody tr:hover .text-muted {
+            color: #c2c2c2 !important;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .35rem .75rem;
+            border-radius: 999px;
+            font-size: .75rem;
+            border: 1px solid #2c2c2c;
+            background: #1d1d1d;
+            color: #f0f0f0;
+        }
+
+        .chip-muted {
+            background: #161616;
+            color: #8f8f8f;
+            border-style: dashed;
+        }
+
+        .btn-action {
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid #2c2c2c;
+            background: #1a1a1a;
+            color: #f5f5f5;
+        }
+
+        .btn-outline-light {
+            border-color: #2f2f2f;
+            color: #f5f5f5;
+        }
+
+        .btn-outline-light:hover,
+        .btn-outline-light:focus {
+            background: #2f2f2f;
+            color: #ffffff;
+        }
+
+        .btn-dark-gradient {
+            background: linear-gradient(135deg, #111111 0%, #232323 100%);
+            border: 1px solid #2d2d2d;
+            color: #ffffff;
+            font-weight: 600;
+            padding: .6rem 1.6rem;
+            border-radius: 999px;
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+        .btn-dark-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.45);
+            color: #ffffff;
+        }
+
+        .btn-edit {
+            background: #1d1d1d;
+            color: #f5f5f5;
+            border: 1px solid #2c2c2c;
+        }
+
+        .btn-edit:hover,
+        .btn-edit:focus {
+            background: #272727;
+            color: #ffffff;
+            border-color: #3a3a3a;
+        }
+
+        .btn-close-ticket {
+            background: #131313;
+            color: #f5f5f5;
+            border: 1px solid #2c2c2c;
+        }
+
+        .btn-close-ticket:hover,
+        .btn-close-ticket:focus {
+            background: #1d1d1d;
+            color: #ffffff;
+            border-color: #3a3a3a;
+        }
+
+        .badge-status {
+            background: #1b1b1b;
+            border: 1px solid #2c2c2c;
+            border-radius: 999px;
+            padding: .35rem .8rem;
+            font-size: .75rem;
+        }
+
+        .badge-status.active {
+            color: #6fda8e;
+            border-color: #2c4633;
+            background: rgba(111, 218, 142, 0.15);
+        }
+
+        .badge-status.inactive {
+            color: #f78ca0;
+            border-color: #4b232d;
+            background: rgba(247, 140, 160, 0.12);
+        }
+
+        /* Fix dropdown option backgrounds */
+        .form-select option {
+            background-color: #1a1a1a;
+            color: #f3f3f3;
+        }
+
+        .form-control option {
+            background-color: #1a1a1a;
+            color: #f3f3f3;
+        }
+    </style>
+
+    <div class="users-header d-flex flex-column flex-md-row justify-content-between gap-4 align-items-start align-items-md-center">
+        <div>
+            <h1 class="mb-1">👥 Team Directory</h1>
+            <p class="mb-0 opacity-75">Manage employees, roles, and account access in one place.</p>
+        </div>
+        <a asp-action="Create" class="btn btn-dark-gradient">
+            ➕ Add Team Member
+        </a>
+    </div>
+
+    <div class="toolbar-card">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-6">
+                <label class="form-label text-uppercase text-muted small mb-1">Quick Search</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent text-light border-secondary">🔍</span>
+                    <input type="text" id="userSearch" class="form-control border-secondary bg-transparent text-light" placeholder="Search by name, employee ID, email, or department...">
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <label class="form-label text-uppercase text-muted small mb-1">Role</label>
+                <select id="roleFilter" class="form-select border-secondary bg-transparent text-light">
+                    <option value="">All Roles</option>
+                    <option value="employee">Employee</option>
+                    <option value="service_desk">Service Desk</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="col-lg-3">
+                <label class="form-label text-uppercase text-muted small mb-1">Status</label>
+                <select id="statusFilter" class="form-select border-secondary bg-transparent text-light">
+                    <option value="">All Accounts</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-shell">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Active Directory</h5>
+            <span class="badge bg-primary" id="userCount">@Model.Count users</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 users-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th style="width: 130px;">Employee ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th style="width: 140px;">Role</th>
+                        <th style="width: 160px;">Department</th>
+                        <th style="width: 120px;">Status</th>
+                        <th style="width: 160px;">Created</th>
+                        <th style="width: 140px;" class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Any())
+                    {
+                        foreach (var user in Model)
+                        {
+                            <tr data-role="@user.Role.ToLower()" data-status="@user.IsActive.ToString().ToLower()">
+                                <td><strong class="text-primary">@user.EmployeeId</strong></td>
+                                <td>
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-semibold">@user.Name</span>
+                                        <small class="text-muted">@user.UserName</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="chip">📧 @user.Email</span>
+                                </td>
+                                <td>
+                                    <span class="chip">@user.Role.Replace('_', ' ').ToUpperInvariant()</span>
+                                </td>
+                                <td>
+                                    <span class="chip">🏢 @user.Department?.Name</span>
+                                </td>
+                                <td>
+                                    <span class="badge-status @(user.IsActive ? "active" : "inactive")">
+                                        @(user.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>@user.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")</small><br />
+                                    <small class="text-muted">@user.CreatedAt.ToLocalTime().ToString("HH:mm")</small>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Details" asp-route-id="@user.Id" class="btn btn-sm btn-outline-light" title="View Profile">👁️</a>
+                                        <a asp-action="Edit" asp-route-id="@user.Id" class="btn btn-sm btn-edit btn-action" title="Edit">✏️</a>
+                                        <a asp-action="Delete" asp-route-id="@user.Id" class="btn btn-sm btn-close-ticket btn-action" title="Delete">🗑️</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">No users found.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function() {
+            const searchInput = document.getElementById('userSearch');
+            const roleFilter = document.getElementById('roleFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const table = document.getElementById('usersTable');
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            const countBadge = document.getElementById('userCount');
+
+            function filterRows() {
+                const query = searchInput.value.trim().toLowerCase();
+                const role = roleFilter.value;
+                const status = statusFilter.value;
+                let visible = 0;
+
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    const matchesQuery = query === '' || text.includes(query);
+                    const matchesRole = role === '' || row.getAttribute('data-role') === role;
+                    const matchesStatus = status === '' || row.getAttribute('data-status') === status;
+
+                    if (matchesQuery && matchesRole && matchesStatus) {
+                        row.style.display = '';
+                        visible++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                countBadge.textContent = visible + (visible === 1 ? ' user' : ' users');
+            }
+
+            searchInput.addEventListener('keyup', filterRows);
+            roleFilter.addEventListener('change', filterRows);
+            statusFilter.addEventListener('change', filterRows);
+        })();
+    </script>
+}

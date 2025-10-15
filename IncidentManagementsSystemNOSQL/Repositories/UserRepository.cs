@@ -1,15 +1,19 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using MongoDB.Driver;
+using System.Linq;
 
 namespace IncidentManagementsSystemNOSQL.Repositories
 {
     public class UserRepository : IUserRepository
     {
         private readonly IMongoCollection<User> _users;
+        private readonly IMongoCollection<Counter> _counters;
+        private const string EmployeeCounterId = "employee-sequence";
 
         public UserRepository(IMongoDatabase db)
         {
             _users = db.GetCollection<User>("users");
+            _counters = db.GetCollection<Counter>("counters");
         }
 
         public User? GetByUsername(string username)
@@ -59,6 +63,20 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             catch (Exception ex)
             {
                 throw new Exception("Error while retrieving all users", ex);
+            }
+        }
+
+        public List<User> GetServiceDeskAgents()
+        {
+            try
+            {
+                return _users.Find(u => u.IsActive && u.Role == "service_desk")
+                    .SortBy(u => u.EmployeeId)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while retrieving service desk agents", ex);
             }
         }
 
@@ -115,6 +133,54 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
+        public string GetNextEmployeeId()
+        {
+            try
+            {
+                var counterFilter = Builders<Counter>.Filter.Eq(c => c.Id, EmployeeCounterId);
+                var update = Builders<Counter>.Update.Inc(c => c.SequenceValue, 1);
+                var options = new FindOneAndUpdateOptions<Counter>
+                {
+                    ReturnDocument = ReturnDocument.After
+                };
+
+                var counter = _counters.FindOneAndUpdate(counterFilter, update, options);
+
+                if (counter == null)
+                {
+                    var seedValue = DetermineSeedValue() + 1;
+
+                    try
+                    {
+                        var newCounter = new Counter
+                        {
+                            Id = EmployeeCounterId,
+                            SequenceValue = seedValue
+                        };
+
+                        _counters.InsertOne(newCounter);
+                        return FormatEmployeeId(seedValue);
+                    }
+                    catch (MongoWriteException writeEx) when (writeEx.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+                    {
+                        counter = _counters.FindOneAndUpdate(counterFilter, update, options);
+                        if (counter != null)
+                        {
+                            return FormatEmployeeId(counter.SequenceValue);
+                        }
+                    }
+
+                    throw new InvalidOperationException("Unable to initialize the employee ID counter.");
+                }
+
+                return FormatEmployeeId(counter.SequenceValue);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while generating the next employee ID", ex);
+            }
+        }
+
         public void EnsureIndexes()
         {
             try
@@ -141,5 +207,53 @@ namespace IncidentManagementsSystemNOSQL.Repositories
                 throw new Exception("Error while ensuring indexes for users collection", ex);
             }
         }
+
+        private long DetermineSeedValue()
+        {
+            const long defaultSeed = 1000;
+
+            try
+            {
+                var employeeIds = _users.Find(FilterDefinition<User>.Empty)
+                    .Project(u => u.EmployeeId)
+                    .ToList();
+
+                if (employeeIds.Count == 0)
+                {
+                    return defaultSeed;
+                }
+
+                var maxValue = defaultSeed;
+
+                foreach (var employeeId in employeeIds)
+                {
+                    if (TryParseEmployeeNumber(employeeId, out var parsed) && parsed > maxValue)
+                    {
+                        maxValue = parsed;
+                    }
+                }
+
+                return maxValue;
+            }
+            catch
+            {
+                return defaultSeed;
+            }
+        }
+
+        private static bool TryParseEmployeeNumber(string employeeId, out long number)
+        {
+            number = 0;
+
+            if (string.IsNullOrWhiteSpace(employeeId))
+            {
+                return false;
+            }
+
+            var numericPart = new string(employeeId.Where(char.IsDigit).ToArray());
+            return long.TryParse(numericPart, out number);
+        }
+
+        private static string FormatEmployeeId(long number) => $"EMP-{number:D4}";
     }
 }

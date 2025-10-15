@@ -1,57 +1,63 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
-using IncidentManagementsSystemNOSQL.Repositories;
 using IncidentManagementsSystemNOSQL.Service;
-using IncidentManagementsSystemNOSQL.Service.IncidentManagementsSystemNOSQL.Service;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Bson;
+using Microsoft.Extensions.Logging;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
     public class TicketController : Controller
     {
         private readonly ITicketService _ticketService;
-        private readonly ITicketPriorityService _priorityService
+        private readonly ILogger<TicketController> _logger;
 
-            ;
-
-        public TicketController(ITicketService ticketService, ITicketPriorityService priorityService)
+        public TicketController(ITicketService ticketService, ILogger<TicketController> logger)
         {
             _ticketService = ticketService;
-            _priorityService = _priorityService;
+            _logger = logger;
         }
-        public IActionResult Index([FromQuery] string? priority = null)
+        public IActionResult Index()
         {
-            if (!string.IsNullOrWhiteSpace(priority) &&
-                _priorityService.TryParsePriority(priority, out var p))
+            try
             {
-                var filtered = _priorityService.BuildPriorityFilter(p);
-                ViewBag.Priority = p.ToString();
-                return View(filtered);
+                List<Ticket> tickets = _ticketService.GetAll();
+                return View(tickets);
             }
-
-            ViewBag.Priority = "All";
-            return View(_ticketService.GetAll());
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading tickets");
+                return StatusCode(500, "An error occurred while retrieving tickets.");
+            }
         }
-
 
         public IActionResult Details(string id)
         {
             try
             {
-                var ticket = _ticketService.GetById(id);
-                if (ticket == null) return NotFound();
+                Ticket? ticket = _ticketService.GetById(id);
+                if (ticket == null)
+                {
+                    return NotFound();
+                }
                 return View(ticket);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading ticket {id}: {ex.Message}");
+                _logger.LogError(ex, "Error loading ticket {TicketId}", id);
                 return StatusCode(500, "An error occurred while retrieving the ticket.");
             }
         }
 
         public IActionResult Create()
         {
-            return View();
+            try
+            {
+                return View();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error rendering create ticket view");
+                return StatusCode(500, "An error occurred while preparing the ticket creation form.");
+            }
         }
 
         [HttpPost]
@@ -70,7 +76,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error creating ticket: {ex.Message}");
+                _logger.LogError(ex, "Error creating ticket for requester {Requester}", ticket?.Employee?.Email);
                 ModelState.AddModelError("", "Unable to create ticket. Please try again.");
                 return View(ticket);
             }
@@ -81,36 +87,113 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             try
             {
 
-                var ticket = _ticketService.GetById(id);
-                if (ticket == null) return NotFound();
+                Ticket? ticket = _ticketService.GetById(id);
+                if (ticket == null)
+                {
+                    return NotFound();
+                }
                 return View(ticket);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error retrieving ticket {id} for edit: {ex.Message}");
+                _logger.LogError(ex, "Error retrieving ticket {TicketId} for edit", id);
                 return StatusCode(500, "An error occurred while retrieving the ticket.");
             }
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult Edit(string id, Ticket ticket)
+    [HttpPost]
+        public IActionResult Edit(Ticket ticket)
         {
-            if (!ObjectId.TryParse(id, out var objectId) || id != ticket.Id)
-                return BadRequest();
+            _logger.LogInformation("Edit POST called with ticket.Id {TicketId}", ticket?.Id);
 
-            if (!ModelState.IsValid) return View(ticket);
+            if (ticket == null || string.IsNullOrWhiteSpace(ticket.Id))
+            {
+                _logger.LogWarning("Ticket payload was null or missing Id");
+                TempData["ErrorMessage"] = "We couldn't find that ticket. Please try again.";
+                return RedirectToAction("Index", "Dashboard");
+            }
 
             try
             {
-                _ticketService.UpdateTicket(id, ticket);
-                return RedirectToAction(nameof(Index));
+                Ticket? existingTicket = _ticketService.GetById(ticket.Id);
+                if (existingTicket == null)
+                {
+                    _logger.LogWarning("Ticket {TicketId} not found in database", ticket.Id);
+                    TempData["ErrorMessage"] = "Ticket no longer exists.";
+                    return RedirectToAction("Index", "Dashboard");
+                }
+
+                // Copy immutable fields so we don't rely on hidden inputs
+                ticket.TicketId = existingTicket.TicketId;
+                ticket.Employee = existingTicket.Employee;
+                ticket.AssignedTo = existingTicket.AssignedTo;
+                ticket.Comments = existingTicket.Comments;
+                ticket.DateCreated = existingTicket.DateCreated;
+
+                // Keep original DateClosed unless we are changing status
+                ticket.DateClosed = existingTicket.DateClosed;
+
+                // Automatically set DateClosed if status is being changed to closed
+                if ((ticket.Status == "closed_resolved" || ticket.Status == "closed_no_resolve"))
+                {
+                    ticket.DateClosed ??= DateTime.UtcNow;
+                }
+                else if (ticket.Status == "open" || ticket.Status == "in_progress")
+                {
+                    ticket.DateClosed = null;
+                }
+
+                _logger.LogInformation("Updating ticket {TicketId} with status {Status}", ticket.Id, ticket.Status);
+                _ticketService.UpdateTicket(ticket.Id, ticket);
+                TempData["SuccessMessage"] = "Ticket updated successfully!";
+                return RedirectToAction("Index", "Dashboard");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error updating ticket {id}: {ex.Message}");
+                _logger.LogError(ex, "Error updating ticket {TicketId}", ticket.Id);
+                TempData["ErrorMessage"] = $"Unable to update ticket: {ex.Message}";
                 ModelState.AddModelError("", "Unable to update ticket. Please try again.");
                 return View(ticket);
+            }
+        }
+
+        // Quick action to close a ticket
+    [HttpPost]
+        public IActionResult CloseTicket([FromForm] string? id, [FromForm] string? reason)
+        {
+            _logger.LogInformation("CloseTicket called with id={TicketId}, reason={Reason}", id, reason);
+            
+            if (string.IsNullOrEmpty(id))
+            {
+                _logger.LogWarning("CloseTicket called with empty id parameter");
+                TempData["ErrorMessage"] = "Invalid ticket ID";
+                return RedirectToAction("Index", "Dashboard");
+            }
+            
+            try
+            {
+                Ticket? ticket = _ticketService.GetById(id);
+                if (ticket == null)
+                {
+                    _logger.LogWarning("Ticket with id {TicketId} not found when attempting to close", id);
+                    TempData["ErrorMessage"] = "Ticket not found";
+                    return RedirectToAction("Index", "Dashboard");
+                }
+
+                // Set ticket to closed
+                ticket.Status = reason == "resolved" ? "closed_resolved" : "closed_no_resolve";
+                ticket.DateClosed = DateTime.UtcNow;
+                
+                _logger.LogInformation("Closing ticket {TicketNumber} with status {Status}", ticket.TicketId, ticket.Status);
+                _ticketService.UpdateTicket(id, ticket);
+                TempData["SuccessMessage"] = $"Ticket {ticket.TicketId} has been closed successfully!";
+                return RedirectToAction("Index", "Dashboard");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error closing ticket {TicketId}", id);
+                TempData["ErrorMessage"] = $"Unable to close ticket: {ex.Message}";
+                return RedirectToAction("Index", "Dashboard");
             }
         }
 
@@ -118,13 +201,16 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                var ticket = _ticketService.GetById(id);
-                if (ticket == null) return NotFound();
+                Ticket? ticket = _ticketService.GetById(id);
+                if (ticket == null)
+                {
+                    return NotFound();
+                }
                 return View(ticket);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error retrieving ticket {id} for deletion: {ex.Message}");
+                _logger.LogError(ex, "Error retrieving ticket {TicketId} for deletion", id);
                 return StatusCode(500, "An error occurred while retrieving the ticket.");
             }
         }
@@ -140,7 +226,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error deleting ticket {id}: {ex.Message}");
+                _logger.LogError(ex, "Error deleting ticket {TicketId}", id);
                 return StatusCode(500, "An error occurred while deleting the ticket.");
             }
         }
