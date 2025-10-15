@@ -1,3 +1,5 @@
+using System.IO;
+using System.Reflection;
 using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
 using IncidentManagementsSystemNOSQL.Service;
@@ -33,14 +35,33 @@ builder.Services.AddScoped<ITicketService, TicketService>();
 builder.Services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+    }
+});
 
 var app = builder.Build();
 
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+else
+{
     app.UseExceptionHandler("/Home/Error");
+}
 
 app.UseStaticFiles();
 app.UseRouting();
+
+app.MapControllers();
 
 app.MapControllerRoute(
     name: "default",
