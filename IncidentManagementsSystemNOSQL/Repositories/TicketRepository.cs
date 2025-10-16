@@ -59,14 +59,17 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             _tickets.DeleteOne(t => t.Id == id);
         }
 
-        public Dictionary<TicketStatus, int> GetTicketCountsByStatus()
+        public Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus()
         {
-            var results = _tickets.Aggregate()
-                .Group(t => t.Status, g => new { Status = g.Key, Count = g.Count() })
-                .ToList();
+            var allTickets = GetAll(); 
 
-            return results.ToDictionary(r => r.Status, r => r.Count);
+            var groupedCounts = allTickets
+                .GroupBy(t => t.Status)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            return groupedCounts;
         }
+
 
         public Dictionary<DepartmentType, int> GetTicketCountsByDepartment()
         {

@@ -74,7 +74,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
                 var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id ?? string.Empty),
+                    new Claim(ClaimTypes.NameIdentifier, user.EmployeeId ?? string.Empty),
                     new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
                     new Claim(ClaimTypes.Role, role.ToString()),
                     new Claim("employee_id", user.EmployeeId ?? string.Empty)
@@ -131,6 +131,35 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 _logger.LogError(ex, "Failed to sign out current user");
                 return StatusCode(500, "An unexpected error occurred while signing out.");
             }
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult SetPassword()
+        {
+            return View(new SetPasswordViewModel());
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult SetPassword(SetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var user = _userService.GetUserByUsername(model.Username);
+            if (user == null)
+            {
+                ModelState.AddModelError("", "Username not found. Please contact the Service Desk.");
+                return View(model);
+            }
+
+            var newHash = _passwordHasher.HashPassword(model.Password);
+            _userService.SetPassword(user.Id, newHash);
+
+            TempData["SuccessMessage"] = "Password set successfully. You can now log in.";
+            return RedirectToAction("Login");
         }
 
         [AllowAnonymous]

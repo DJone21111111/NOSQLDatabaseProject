@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Service;
 using Microsoft.AspNetCore.Authorization;
@@ -19,98 +20,71 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             _logger = logger;
         }
 
-        public IActionResult Index(string? agentId)
+        [HttpGet]
+        public IActionResult Index()
         {
             try
             {
-                var agent = ResolveServiceDeskAgent(agentId);
-                var allTickets = _ticketService.GetAll();
-                var myTickets = new List<Ticket>();
+                ViewBag.HideUsersNav = false;
+                ViewBag.EmployeeMode = false;
 
-                if (agent != null)
+                var empId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var agent = !string.IsNullOrWhiteSpace(empId) ? _userService.GetUserByEmployeeId(empId) : null;
+                var isAgent = agent != null && agent.IsActive && agent.Role == Enums.UserRole.service_desk;
+
+                if (isAgent)
                 {
-                    myTickets = allTickets
-                        .Where(t => t.AssignedTo != null &&
-                                    string.Equals(t.AssignedTo.EmployeeId, agent.EmployeeId, StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-
-                    ViewBag.AgentName = agent.Name;
-                    ViewBag.AgentId = agent.EmployeeId;
-                    ViewBag.AgentEmail = agent.Email;
                     ViewBag.HasAgentContext = true;
+                    ViewBag.AgentId = agent.EmployeeId;
+                    ViewBag.AgentName = agent.Name;
+                    ViewBag.AgentEmail = agent.Email;
                 }
                 else
                 {
-                    TempData["ErrorMessage"] = "We could not resolve a service desk account to personalise assignments. Showing all tickets.";
                     ViewBag.HasAgentContext = false;
+                    ViewBag.AgentId = "";
+                    ViewBag.AgentName = "";
+                    ViewBag.AgentEmail = "";
+                    TempData["ErrorMessage"] = "We could not resolve a service desk account to personalise assignments. Showing all tickets.";
                 }
 
-                ViewBag.AgentTicketCount = myTickets.Count;
+                var tickets = _ticketService.GetAll();
 
-                // ENUM-KEYED DICTIONARIES
-                Dictionary<Enums.TicketStatus, int> statusCounts = _ticketService.GetTicketCountsByStatus();
-                Dictionary<Enums.DepartmentType, int> departmentCounts = _ticketService.GetTicketCountsByDepartment();
+                var byStatus = _ticketService.GetTicketCountsByStatus();
+                var total = tickets.Count;
 
-                ViewBag.StatusCounts = statusCounts;
-                ViewBag.DepartmentCounts = departmentCounts;
-
-                int totalTickets = allTickets.Count;
-                ViewBag.TotalTickets = totalTickets;
-
-                var statusPercentages = new Dictionary<Enums.TicketStatus, double>();
-                if (totalTickets > 0)
+                var percentages = new Dictionary<Enums.TicketStatus, double>();
+                foreach (var kv in byStatus)
                 {
-                    foreach (var kv in statusCounts)
-                    {
-                        statusPercentages[kv.Key] = Math.Round((double)kv.Value / totalTickets * 100, 1);
-                    }
+                    var p = total > 0 ? (double)kv.Value / total * 100.0 : 0.0;
+                    percentages[kv.Key] = Math.Round(p, 1);
                 }
 
-                ViewBag.StatusPercentages = statusPercentages;
+                var deptCounts = _ticketService.GetTicketCountsByDepartment();
 
-                return View(allTickets);
+                ViewBag.TotalTickets = total;
+                ViewBag.StatusCounts = byStatus;
+                ViewBag.StatusPercentages = percentages;
+                ViewBag.DepartmentCounts = deptCounts;
+
+                if (isAgent)
+                {
+                    var myCount = tickets.Count(t => t.AssignedTo != null &&
+                                                     string.Equals(t.AssignedTo.EmployeeId, agent.EmployeeId, StringComparison.OrdinalIgnoreCase));
+                    ViewBag.AgentTicketCount = myCount;
+                }
+                else
+                {
+                    ViewBag.AgentTicketCount = 0;
+                }
+
+                return View(tickets);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading service desk dashboard");
-                TempData["ErrorMessage"] = "An error occurred while loading the ticket dashboard.";
-
-                ViewBag.StatusCounts = new Dictionary<Enums.TicketStatus, int>();
-                ViewBag.StatusPercentages = new Dictionary<Enums.TicketStatus, double>();
-                ViewBag.DepartmentCounts = new Dictionary<Enums.DepartmentType, int>();
-                ViewBag.TotalTickets = 0;
-                ViewBag.HasAgentContext = false;
-                ViewBag.AgentTicketCount = 0;
-
+                TempData["ErrorMessage"] = "An unexpected error occurred while loading the dashboard.";
                 return View(new List<Ticket>());
-            }
-        }
-
-        private User? ResolveServiceDeskAgent(string? agentId)
-        {
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(agentId))
-                {
-                    var agentById = _userService.GetUserByEmployeeId(agentId);
-                    if (agentById != null && agentById.Role == Enums.UserRole.service_desk)
-                    {
-                        return agentById;
-                    }
-                }
-
-                var agents = _userService.GetServiceDeskAgents();
-                if (agents == null || agents.Count == 0) return null;
-
-                const string defaultAgentName = "Zoe Garcia";
-                var agentByName = agents.FirstOrDefault(a =>
-                    string.Equals(a.Name, defaultAgentName, StringComparison.OrdinalIgnoreCase));
-                return agentByName ?? agents.FirstOrDefault();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to resolve service desk agent for {AgentId}", agentId);
-                return null;
             }
         }
     }

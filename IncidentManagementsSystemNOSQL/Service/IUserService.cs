@@ -14,5 +14,7 @@ namespace IncidentManagementsSystemNOSQL.Service
         void UpdateUser(string id, User updatedUser);
         void DeleteUser(string id);
         string GetNextEmployeeId();
+
+        void SetPassword(string userId, string newPasswordHash);
     }
 }

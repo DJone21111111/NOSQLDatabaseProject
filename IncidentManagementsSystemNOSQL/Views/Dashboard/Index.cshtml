@@ -25,13 +25,15 @@
     var agentTicketCount = ViewBag.AgentTicketCount is int myCount ? myCount : 0;
 
     var assignedBlurb = hasAgentContext && !string.IsNullOrWhiteSpace(agentName)
-        ? $"Service desk queue for {agentName}."
-        : "Monitor and manage all incident tickets in real-time";
+      ? $"Service desk queue for {agentName}."
+      : "Monitor and manage all incident tickets in real-time";
 }
 
 @Html.AntiForgeryToken()
 
 <style>
+
+
     /* styles unchanged */
 </style>
 
@@ -141,11 +143,16 @@
             <div class="col-lg-3 col-md-6">
                 <select id="departmentFilter" class="form-select">
                     <option value="">All Departments</option>
-                    @if (ViewBag.DepartmentCounts != null)
+                    @{
+                        // Correctly cast ViewBag.DepartmentCounts
+                        var departmentCounts = ViewBag.DepartmentCounts as IDictionary<DepartmentType, int>;
+                    }
+                    @if (departmentCounts != null)
                     {
-                        foreach (var dept in (IEnumerable<DepartmentType>)ViewBag.DepartmentCounts.Keys)
+                        // Iterate directly over the keys
+                        foreach (var dept in departmentCounts.Keys)
                         {
-                            <option value="@dept">@dept</option>
+                            <option value="@dept">@dept.ToString().Replace("_", " ")</option>
                         }
                     }
                 </select>
@@ -191,9 +198,9 @@
                                     {
                                         var statusString = ticket.Status.ToString();
                                         <tr data-ticket-id="@ticket.TicketId"
-                                            data-status="@statusString"
-                                            data-department="@((ticket.Employee?.Department?.Name ?? "Unknown Department"))"
-                                            data-assigned-state="@(ticket.AssignedTo == null ? "unassigned" : (hasAgentContext && !string.IsNullOrWhiteSpace(agentId) && string.Equals(ticket.AssignedTo.EmployeeId, agentId, StringComparison.OrdinalIgnoreCase) ? "mine" : "other"))">
+                                                                  data-status="@statusString"
+                                                                  data-department="@((ticket.Employee?.Department?.Name ?? "Unknown Department"))"
+                                                                  data-assigned-state="@(ticket.AssignedTo == null ? "unassigned" : (hasAgentContext && !string.IsNullOrWhiteSpace(agentId) && string.Equals(ticket.AssignedTo.EmployeeId, agentId, StringComparison.OrdinalIgnoreCase) ? "mine" : "other"))">
                                             <td>
                                                 <strong class="text-primary">@ticket.TicketId</strong>
                                             </td>
@@ -280,18 +287,18 @@
                                             <td class="text-center">
                                                 <div class="btn-group" role="group">
                                                     <a href="@Url.Action("Edit", "Ticket", new { id = ticket.Id })"
-                                                       class="btn btn-sm btn-action btn-edit"
-                                                       title="Edit Ticket">
+                                                                                   class="btn btn-sm btn-action btn-edit"
+                                                                                   title="Edit Ticket">
                                                         ✏️ Edit
                                                     </a>
                                                     @if (ticket.Status != TicketStatus.closed_resolved && ticket.Status != TicketStatus.closed_no_resolve)
                                                     {
                                                         <button type="button"
-                                                                class="btn btn-sm btn-action btn-close-ticket close-ticket-btn"
-                                                                data-ticket-id="@ticket.Id"
-                                                                data-ticket-number="@ticket.TicketId"
-                                                                data-reason="resolved"
-                                                                title="Close as Resolved">
+                                                                                                class="btn btn-sm btn-action btn-close-ticket close-ticket-btn"
+                                                                                                data-ticket-id="@ticket.Id"
+                                                                                                data-ticket-number="@ticket.TicketId"
+                                                                                                data-reason="resolved"
+                                                                                                title="Close as Resolved">
                                                             ✅
                                                         </button>
                                                     }

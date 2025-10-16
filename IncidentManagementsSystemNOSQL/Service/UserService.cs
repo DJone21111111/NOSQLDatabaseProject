@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using IncidentManagementsSystemNOSQL.Models;
+﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
 
 namespace IncidentManagementsSystemNOSQL.Service
@@ -86,6 +84,11 @@ namespace IncidentManagementsSystemNOSQL.Service
             {
                 throw new Exception("An error occurred while adding a new user.", ex);
             }
+        }
+
+        public void SetPassword(string userId, string newPasswordHash)
+        {
+            _userRepository.SetPasswordHash(userId, newPasswordHash);
         }
 
         public void UpdateUser(string id, User updatedUser)
