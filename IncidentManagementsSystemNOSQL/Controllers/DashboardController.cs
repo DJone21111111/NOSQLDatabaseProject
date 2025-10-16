@@ -1,16 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-//using Microsoft.AspNetCore.Authorization;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
-     //for later
-   // [Authorize(Roles = "service_desk")]
- 
+    [Authorize(Roles = nameof(Enums.UserRole.service_desk))]
     public class DashboardController : Controller
     {
         private readonly ITicketService _ticketService;
@@ -28,9 +23,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                User? agent = ResolveServiceDeskAgent(agentId);
-                List<Ticket> allTickets = _ticketService.GetAll();
-                List<Ticket> myTickets = new List<Ticket>();
+                var agent = ResolveServiceDeskAgent(agentId);
+                var allTickets = _ticketService.GetAll();
+                var myTickets = new List<Ticket>();
 
                 if (agent != null)
                 {
@@ -52,8 +47,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
                 ViewBag.AgentTicketCount = myTickets.Count;
 
-                Dictionary<string, int> statusCounts = _ticketService.GetTicketCountsByStatus();
-                Dictionary<string, int> departmentCounts = _ticketService.GetTicketCountsByDepartment();
+                // ENUM-KEYED DICTIONARIES
+                Dictionary<Enums.TicketStatus, int> statusCounts = _ticketService.GetTicketCountsByStatus();
+                Dictionary<Enums.DepartmentType, int> departmentCounts = _ticketService.GetTicketCountsByDepartment();
 
                 ViewBag.StatusCounts = statusCounts;
                 ViewBag.DepartmentCounts = departmentCounts;
@@ -61,13 +57,12 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 int totalTickets = allTickets.Count;
                 ViewBag.TotalTickets = totalTickets;
 
-                Dictionary<string, double> statusPercentages = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+                var statusPercentages = new Dictionary<Enums.TicketStatus, double>();
                 if (totalTickets > 0)
                 {
-                    foreach (string statusKey in statusCounts.Keys)
+                    foreach (var kv in statusCounts)
                     {
-                        int count = statusCounts[statusKey];
-                        statusPercentages[statusKey] = Math.Round((double)count / totalTickets * 100, 1);
+                        statusPercentages[kv.Key] = Math.Round((double)kv.Value / totalTickets * 100, 1);
                     }
                 }
 
@@ -79,12 +74,14 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             {
                 _logger.LogError(ex, "Error loading service desk dashboard");
                 TempData["ErrorMessage"] = "An error occurred while loading the ticket dashboard.";
-                ViewBag.StatusCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                ViewBag.StatusPercentages = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-                ViewBag.DepartmentCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+                ViewBag.StatusCounts = new Dictionary<Enums.TicketStatus, int>();
+                ViewBag.StatusPercentages = new Dictionary<Enums.TicketStatus, double>();
+                ViewBag.DepartmentCounts = new Dictionary<Enums.DepartmentType, int>();
                 ViewBag.TotalTickets = 0;
                 ViewBag.HasAgentContext = false;
                 ViewBag.AgentTicketCount = 0;
+
                 return View(new List<Ticket>());
             }
         }
@@ -95,28 +92,20 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             {
                 if (!string.IsNullOrWhiteSpace(agentId))
                 {
-                    User? agentById = _userService.GetUserByEmployeeId(agentId);
-                    if (agentById != null &&
-                        string.Equals(agentById.Role, "service_desk", StringComparison.OrdinalIgnoreCase))
+                    var agentById = _userService.GetUserByEmployeeId(agentId);
+                    if (agentById != null && agentById.Role == Enums.UserRole.service_desk)
                     {
                         return agentById;
                     }
                 }
 
-                List<User> agents = _userService.GetServiceDeskAgents();
-                if (agents == null || agents.Count == 0)
-                {
-                    return null;
-                }
+                var agents = _userService.GetServiceDeskAgents();
+                if (agents == null || agents.Count == 0) return null;
 
                 const string defaultAgentName = "Zoe Garcia";
-                User? agentByName = agents.FirstOrDefault(a => string.Equals(a.Name, defaultAgentName, StringComparison.OrdinalIgnoreCase));
-                if (agentByName != null)
-                {
-                    return agentByName;
-                }
-
-                return agents.FirstOrDefault();
+                var agentByName = agents.FirstOrDefault(a =>
+                    string.Equals(a.Name, defaultAgentName, StringComparison.OrdinalIgnoreCase));
+                return agentByName ?? agents.FirstOrDefault();
             }
             catch (Exception ex)
             {

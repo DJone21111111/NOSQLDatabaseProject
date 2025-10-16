@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using IncidentManagementsSystemNOSQL.Models;
+﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
+
 namespace IncidentManagementsSystemNOSQL.Service
 {
     public class TicketService : ITicketService
@@ -15,7 +13,6 @@ namespace IncidentManagementsSystemNOSQL.Service
             _ticketRepository = ticketRepository;
             _userService = userService;
         }
-
 
         public List<Ticket> GetAll()
         {
@@ -63,7 +60,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public List<Ticket> GetByStatus(string status)
+        public List<Ticket> GetByStatus(Enums.TicketStatus status)
         {
             try
             {
@@ -91,13 +88,13 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-
         public void AddTicket(Ticket ticket)
         {
             try
             {
                 ticket.DateCreated = DateTime.UtcNow;
-                ticket.Status = "open";
+                ticket.Status = Enums.TicketStatus.open;
+
                 if (string.IsNullOrWhiteSpace(ticket.TicketId))
                 {
                     ticket.TicketId = GetNextTicketId();
@@ -119,14 +116,18 @@ namespace IncidentManagementsSystemNOSQL.Service
 
             try
             {
-                if (updatedTicket.Status == "closed_resolved" || updatedTicket.Status == "closed_no_resolve")
+                if (updatedTicket.Status == Enums.TicketStatus.closed_resolved || updatedTicket.Status == Enums.TicketStatus.closed_no_resolve)
                 {
                     updatedTicket.DateClosed = DateTime.UtcNow;
+                }
+                else if (updatedTicket.Status == Enums.TicketStatus.open || updatedTicket.Status == Enums.TicketStatus.in_progress)
+                {
+                    updatedTicket.DateClosed = null;
                 }
 
                 EnsureAssignedAgent(updatedTicket);
 
-                _ticketRepository.UpdateTicket(id,updatedTicket);
+                _ticketRepository.UpdateTicket(id, updatedTicket);
             }
             catch (Exception ex)
             {
@@ -146,8 +147,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-
-        public Dictionary<string, int> GetTicketCountsByStatus()
+        public Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus()
         {
             try
             {
@@ -159,7 +159,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public Dictionary<string, int> GetTicketCountsByDepartment()
+        public Dictionary<Enums.DepartmentType, int> GetTicketCountsByDepartment()
         {
             try
             {
@@ -171,7 +171,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public Dictionary<string, int> GetTicketCountsByStatusForEmployee(string employeeId)
+        public Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatusForEmployee(string employeeId)
         {
             try
             {
@@ -231,7 +231,7 @@ namespace IncidentManagementsSystemNOSQL.Service
                 EmployeeId = agent.EmployeeId,
                 Name = agent.Name,
                 Email = agent.Email,
-                Role = agent.Role
+                Role = agent.Role.ToString()
             };
         }
 

@@ -11,25 +11,28 @@ namespace IncidentManagementsSystemNOSQL.Models
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = null!;
-        
+
         [BsonElement("TicketId")]
         public string TicketId { get; set; } = null!;
-        
+
         [BsonElement("Title")]
         public string Title { get; set; } = null!;
-        
+
         [BsonElement("Description")]
         public string? Description { get; set; }
 
         [BsonElement("Status")]
-        public string Status { get; set; } = "open";
-        
+        public Enums.TicketStatus Status { get; set; } = Enums.TicketStatus.open;
+
+        [BsonElement("Priority")]
+        public Enums.TicketPriority? Priority { get; set; } = Enums.TicketPriority.Medium;
+
         [BsonElement("DateCreated")]
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
-        
+
         [BsonElement("DateClosed")]
         public DateTime? DateClosed { get; set; }
-        
+
         [BsonElement("Employee")]
         public EmployeeEmbedded Employee { get; set; } = null!;
 

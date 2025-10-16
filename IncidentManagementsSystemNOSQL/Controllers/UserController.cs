@@ -1,22 +1,21 @@
-﻿using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
+﻿using System.Globalization;
 using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Service;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
+using static IncidentManagementsSystemNOSQL.Models.Enums;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
     public class UserController : Controller
     {
-    private readonly IUserService _userService;
-    private readonly IPasswordHasher _passwordHasher;
-    private readonly ILogger<UserController> _logger;
-    private static readonly string[] _allRoleOptions = new[] { "employee", "service_desk", "manager", "admin" };
-    private static readonly string[] _createRoleOptions = new[] { "employee", "service_desk" };
+        private readonly IUserService _userService;
+        private readonly IPasswordHasher _passwordHasher;
+        private readonly ILogger<UserController> _logger;
+
+        private static readonly UserRole[] _allRoleOptions = new[] { UserRole.employee, UserRole.service_desk };
+        private static readonly UserRole[] _createRoleOptions = new[] { UserRole.employee, UserRole.service_desk };
 
         public UserController(IUserService userService, IPasswordHasher passwordHasher, ILogger<UserController> logger)
         {
@@ -66,9 +65,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 {
                     IsActive = true,
                     MustChangePassword = true,
-                    Role = "employee"
+                    Role = UserRole.employee.ToString()
                 };
-                PopulateSelections(model.Role, _createRoleOptions);
+                PopulateSelections(model.Role, _createRoleOptions.Select(r => r.ToString()));
                 return View(model);
             }
             catch (Exception ex)
@@ -78,8 +77,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-    [HttpPost]
-    //[ValidateAntiForgeryToken] // TODO: Re-enable once anti-forgery issues are resolved
+        [HttpPost]
         public IActionResult Create(UserFormViewModel? model)
         {
             if (model == null)
@@ -90,9 +88,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 {
                     IsActive = true,
                     MustChangePassword = true,
-                    Role = "employee"
+                    Role = UserRole.employee.ToString()
                 };
-                PopulateSelections(emptyModel.Role, _createRoleOptions);
+                PopulateSelections(emptyModel.Role, _createRoleOptions.Select(r => r.ToString()));
                 return View(emptyModel);
             }
 
@@ -105,7 +103,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
             if (!ModelState.IsValid)
             {
-                PopulateSelections(requestModel.Role, _createRoleOptions);
+                PopulateSelections(requestModel.Role, _createRoleOptions.Select(r => r.ToString()));
                 return View(requestModel);
             }
 
@@ -127,7 +125,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             {
                 _logger.LogError(ex, "Error creating user with username {Username}", requestModel.UserName);
                 ModelState.AddModelError("", "Unable to create user. Please try again.");
-                PopulateSelections(requestModel.Role, _createRoleOptions);
+                PopulateSelections(requestModel.Role, _createRoleOptions.Select(r => r.ToString()));
                 return View(requestModel);
             }
         }
@@ -147,7 +145,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
                 UserFormViewModel model = MapToViewModel(user);
                 _logger.LogInformation("Loaded user {EmployeeId} for edit", model.EmployeeId);
-                PopulateSelections(model.Role, _createRoleOptions);
+                PopulateSelections(model.Role, _createRoleOptions.Select(r => r.ToString()));
                 return View(model);
             }
             catch (Exception ex)
@@ -159,11 +157,10 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         }
 
         [HttpPost]
-        //[ValidateAntiForgeryToken]  // Temporarily disabled for debugging
         public IActionResult Edit(string? id, UserFormViewModel? model)
         {
             _logger.LogInformation("Edit POST called. Route id: {RouteId}, Model.Id: {ModelId}", id ?? "NULL", model?.Id ?? "NULL");
-            
+
             if (model == null)
             {
                 _logger.LogWarning("Edit POST received a null model");
@@ -171,9 +168,8 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Use model.Id if route id is missing (shouldn't happen but let's be safe)
             string? userId = id ?? model.Id;
-            
+
             if (string.IsNullOrEmpty(userId))
             {
                 _logger.LogWarning("Edit POST missing both route id and model.Id");
@@ -188,7 +184,6 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Remove password validation if fields are empty (user doesn't want to change password)
             if (string.IsNullOrWhiteSpace(model.Password))
             {
                 ModelState.Remove(nameof(UserFormViewModel.Password));
@@ -202,16 +197,16 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 _logger.LogWarning("Edit POST model state invalid");
                 foreach (string key in ModelState.Keys)
                 {
-                    Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateEntry? state = ModelState[key];
+                    var state = ModelState[key];
                     if (state?.Errors.Count > 0)
                     {
-                        foreach (Microsoft.AspNetCore.Mvc.ModelBinding.ModelError error in state.Errors)
+                        foreach (var error in state.Errors)
                         {
                             _logger.LogWarning("Validation error on {Key}: {Message}", key, error.ErrorMessage);
                         }
                     }
                 }
-                PopulateSelections(model.Role, _createRoleOptions);
+                PopulateSelections(model.Role, _createRoleOptions.Select(r => r.ToString()));
                 return View(model);
             }
 
@@ -227,20 +222,21 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 }
 
                 _logger.LogInformation("Updating user {EmployeeId}", existingUser.EmployeeId);
-                
-                // Update only the editable fields from the form
+
                 if (!string.IsNullOrWhiteSpace(model.EmployeeId))
                 {
                     existingUser.EmployeeId = model.EmployeeId;
                 }
                 existingUser.Name = model.Name;
                 existingUser.Email = model.Email;
-                existingUser.Role = model.Role;
+                if (Enum.TryParse<UserRole>(model.Role, true, out var parsedRole))
+                {
+                    existingUser.Role = parsedRole;
+                }
                 existingUser.UserName = model.UserName;
                 existingUser.IsActive = model.IsActive;
                 existingUser.MustChangePassword = model.MustChangePassword;
-                
-                // Preserve existing department ID, update name and description
+
                 string? currentDepartmentId = existingUser.Department?.DepartmentId;
                 existingUser.Department = new DepartmentEmbedded
                 {
@@ -249,19 +245,16 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                     Description = model.DepartmentDescription
                 };
 
-                // Only update password if provided
                 if (!string.IsNullOrWhiteSpace(model.Password))
                 {
                     _logger.LogInformation("Updating password hash for user {EmployeeId}", existingUser.EmployeeId);
                     existingUser.PasswordHash = _passwordHasher.HashPassword(model.Password);
                 }
-                // Otherwise keep the existing PasswordHash (already in existingUser)
 
-                // Keep CreatedAt as-is, update timestamp
                 existingUser.UpdatedAt = DateTime.UtcNow;
-                
+
                 _userService.UpdateUser(userId, existingUser);
-                
+
                 _logger.LogInformation("User {EmployeeId} updated successfully", existingUser.EmployeeId);
                 TempData["SuccessMessage"] = $"User {existingUser.EmployeeId} updated successfully.";
                 return RedirectToAction(nameof(Index));
@@ -317,12 +310,17 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 throw new InvalidOperationException("Employee ID must be provided before mapping to a user entity.");
             }
 
+            if (!Enum.TryParse<UserRole>(model.Role, true, out var role))
+            {
+                role = UserRole.employee;
+            }
+
             User user = new User
             {
                 EmployeeId = model.EmployeeId,
                 Name = model.Name,
                 Email = model.Email,
-                Role = model.Role,
+                Role = role,
                 UserName = model.UserName,
                 IsActive = model.IsActive,
                 MustChangePassword = model.MustChangePassword,
@@ -349,7 +347,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 EmployeeId = user.EmployeeId,
                 Name = user.Name,
                 Email = user.Email,
-                Role = user.Role,
+                Role = user.Role.ToString(),
                 UserName = user.UserName,
                 IsActive = user.IsActive,
                 MustChangePassword = user.MustChangePassword,
@@ -361,7 +359,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
         private void PopulateSelections(string? selectedRole, IEnumerable<string>? allowedRoles = null)
         {
-            List<string> baseRoles = (allowedRoles ?? _allRoleOptions).ToList();
+            List<string> baseRoles = (allowedRoles ?? _allRoleOptions.Select(r => r.ToString())).ToList();
 
             if (!string.IsNullOrWhiteSpace(selectedRole) && !baseRoles.Any(r => string.Equals(r, selectedRole, StringComparison.OrdinalIgnoreCase)))
             {

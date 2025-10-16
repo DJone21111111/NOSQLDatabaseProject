@@ -1,4 +1,6 @@
-﻿using IncidentManagementsSystemNOSQL.Models;
+﻿using System;
+using System.Collections.Generic;
+using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
 
 namespace IncidentManagementsSystemNOSQL.Service
@@ -78,7 +80,6 @@ namespace IncidentManagementsSystemNOSQL.Service
             {
                 user.CreatedAt = DateTime.UtcNow;
                 user.UpdatedAt = DateTime.UtcNow;
-
                 _userRepository.AddUser(user);
             }
             catch (Exception ex)
@@ -93,8 +94,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             {
                 updatedUser.Id = id;
                 updatedUser.UpdatedAt = DateTime.UtcNow;
-
-                _userRepository.UpdateUser(updatedUser);
+                _userRepository.UpdateUser(id, updatedUser);
             }
             catch (Exception ex)
             {

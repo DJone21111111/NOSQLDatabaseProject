@@ -1,13 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
+    [Authorize(Roles = nameof(Enums.UserRole.employee))]
     public class EmployeeController : Controller
     {
         private readonly ITicketService _ticketService;
@@ -27,8 +25,17 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             {
                 ViewBag.HideUsersNav = true;
                 ViewBag.EmployeeMode = true;
-// EMPLOYEE SELECTION LOGIC REPLACE WITH REAL AUTHENTICATION WHEN IMPLEMENTED
-                User? employee = ResolveEmployee(employeeId);
+
+                var claimId = User.FindFirst("employee_id")?.Value;
+                var effectiveEmployeeId = !string.IsNullOrWhiteSpace(claimId) ? claimId : employeeId;
+
+                if (string.IsNullOrWhiteSpace(effectiveEmployeeId))
+                {
+                    TempData["ErrorMessage"] = "We could not find an employee profile to load.";
+                    return View(new EmployeeDashboardViewModel());
+                }
+
+                User? employee = _userService.GetUserByEmployeeId(effectiveEmployeeId);
                 if (employee == null)
                 {
                     TempData["ErrorMessage"] = "We could not find an employee profile to load.";
@@ -36,8 +43,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 }
 
                 ViewBag.EmployeeId = employee.EmployeeId;
+
                 List<Ticket> tickets = _ticketService.GetByUserId(employee.EmployeeId);
-                Dictionary<string, int> statusCounts = _ticketService.GetTicketCountsByStatusForEmployee(employee.EmployeeId);
+                Dictionary<Enums.TicketStatus, int> statusCounts = _ticketService.GetTicketCountsByStatusForEmployee(employee.EmployeeId);
 
                 EmployeeDashboardViewModel model = BuildDashboardModel(employee, tickets, statusCounts);
                 return View(model);
@@ -50,12 +58,19 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        public IActionResult CreateTicket(string employeeId)
+        public IActionResult CreateTicket()
         {
             try
             {
                 ViewBag.HideUsersNav = true;
                 ViewBag.EmployeeMode = true;
+
+                var employeeId = User.FindFirst("employee_id")?.Value;
+                if (string.IsNullOrWhiteSpace(employeeId))
+                {
+                    TempData["ErrorMessage"] = "We could not find your employee record.";
+                    return RedirectToAction(nameof(Index));
+                }
 
                 User? employee = _userService.GetUserByEmployeeId(employeeId);
                 if (employee == null)
@@ -65,7 +80,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 }
 
                 ViewBag.EmployeeId = employee.EmployeeId;
-                EmployeeTicketCreateViewModel model = new EmployeeTicketCreateViewModel
+                var model = new EmployeeTicketCreateViewModel
                 {
                     EmployeeId = employee.EmployeeId,
                     EmployeeName = employee.Name,
@@ -78,15 +93,14 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error preparing ticket creation form for employee {EmployeeId}", employeeId);
+                _logger.LogError(ex, "Error preparing ticket creation form");
                 TempData["ErrorMessage"] = "We could not load the ticket creation form. Please try again later.";
                 return RedirectToAction(nameof(Index));
             }
         }
 
-    [HttpPost]
-    //[ValidateAntiForgeryToken] // TODO: re-enable once anti-forgery tokens are wired through employee create ticket flow
-    public IActionResult CreateTicket(EmployeeTicketCreateViewModel model)
+        [HttpPost]
+        public IActionResult CreateTicket(EmployeeTicketCreateViewModel model)
         {
             try
             {
@@ -98,7 +112,14 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                     return View("CreateTicket", model);
                 }
 
-                User? employee = _userService.GetUserByEmployeeId(model.EmployeeId);
+                var employeeId = User.FindFirst("employee_id")?.Value;
+                if (string.IsNullOrWhiteSpace(employeeId))
+                {
+                    ModelState.AddModelError(string.Empty, "We could not locate your employee profile. Please contact support.");
+                    return View("CreateTicket", model);
+                }
+
+                User? employee = _userService.GetUserByEmployeeId(employeeId);
                 if (employee == null)
                 {
                     ModelState.AddModelError(string.Empty, "We could not locate your employee profile. Please contact support.");
@@ -106,7 +127,8 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 }
 
                 ViewBag.EmployeeId = employee.EmployeeId;
-                Ticket ticket = new Ticket
+
+                var ticket = new Ticket
                 {
                     Title = model.Title,
                     Description = model.Description,
@@ -115,7 +137,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                         EmployeeId = employee.EmployeeId,
                         Name = employee.Name,
                         Email = employee.Email,
-                        Role = employee.Role,
+                        Role = employee.Role.ToString(),
                         Department = new DepartmentEmbedded
                         {
                             DepartmentId = employee.Department?.DepartmentId,
@@ -127,49 +149,24 @@ namespace IncidentManagementsSystemNOSQL.Controllers
 
                 _ticketService.AddTicket(ticket);
                 TempData["SuccessMessage"] = $"Ticket {ticket.TicketId} submitted successfully.";
-                return RedirectToAction(nameof(Index), new { employeeId = employee.EmployeeId });
+                return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating ticket for employee {EmployeeId}", model.EmployeeId);
+                _logger.LogError(ex, "Error creating ticket");
                 ModelState.AddModelError(string.Empty, "We could not submit your ticket right now. Please try again later.");
                 return View("CreateTicket", model);
             }
         }
 
-        // TODO: Replace this resolver with the authenticated user's identity when login/authorization is implemented
-        private User? ResolveEmployee(string? employeeId)
+        private static EmployeeDashboardViewModel BuildDashboardModel(User employee, List<Ticket> tickets, Dictionary<Enums.TicketStatus, int> statusCounts)
         {
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(employeeId))
-                {
-                    User? user = _userService.GetUserByEmployeeId(employeeId);
-                    if (user != null)
-                    {
-                        return user;
-                    }
-                }
+            statusCounts ??= new Dictionary<Enums.TicketStatus, int>();
 
-                // Placeholder fallback: take the first user with role "employee" so the dashboard remains functional during development
-                List<User> users = _userService.GetAllUsers();
-                return users.FirstOrDefault(u => string.Equals(u.Role, "employee", StringComparison.OrdinalIgnoreCase));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to resolve employee for id {EmployeeId}", employeeId);
-                return null;
-            }
-        }
-
-        private static EmployeeDashboardViewModel BuildDashboardModel(User employee, List<Ticket> tickets, Dictionary<string, int> statusCounts)
-        {
-            statusCounts ??= new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-            statusCounts.TryGetValue("open", out int openCount);
-            statusCounts.TryGetValue("in_progress", out int inProgressCount);
-            statusCounts.TryGetValue("closed_resolved", out int closedResolvedCount);
-            statusCounts.TryGetValue("closed_no_resolve", out int closedNoResolveCount);
+            statusCounts.TryGetValue(Enums.TicketStatus.open, out int openCount);
+            statusCounts.TryGetValue(Enums.TicketStatus.in_progress, out int inProgressCount);
+            statusCounts.TryGetValue(Enums.TicketStatus.closed_resolved, out int closedResolvedCount);
+            statusCounts.TryGetValue(Enums.TicketStatus.closed_no_resolve, out int closedNoResolveCount);
 
             return new EmployeeDashboardViewModel
             {
@@ -186,6 +183,5 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 ClosedNoResolveCount = closedNoResolveCount
             };
         }
-
     }
 }

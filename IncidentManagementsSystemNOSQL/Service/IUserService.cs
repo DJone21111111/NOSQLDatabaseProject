@@ -1,4 +1,5 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
+
 namespace IncidentManagementsSystemNOSQL.Service
 {
     public interface IUserService
@@ -7,7 +8,7 @@ namespace IncidentManagementsSystemNOSQL.Service
         User? GetUserById(string id);
         User? GetUserByEmployeeId(string employeeId);
         User? GetUserByUsername(string username);
-    List<User> GetServiceDeskAgents();
+        List<User> GetServiceDeskAgents();
 
         void AddUser(User user);
         void UpdateUser(string id, User updatedUser);

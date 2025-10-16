@@ -1,4 +1,5 @@
 @model List<IncidentManagementsSystemNOSQL.Models.User>
+@using System.Globalization
 
 @{
     ViewData["Title"] = "Team Directory";
@@ -264,7 +265,11 @@
                     {
                         foreach (var user in Model)
                         {
-                            <tr data-role="@user.Role.ToLower()" data-status="@user.IsActive.ToString().ToLower()">
+                            var roleStr = user.Role.ToString(); // enum -> string (e.g., "service_desk")
+                            var roleForAttr = roleStr.ToLowerInvariant();
+                            var roleForDisplay = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(roleStr.Replace('_', ' '));
+
+                            <tr data-role="@roleForAttr" data-status="@(user.IsActive.ToString().ToLowerInvariant())">
                                 <td><strong class="text-primary">@user.EmployeeId</strong></td>
                                 <td>
                                     <div class="d-flex flex-column">
@@ -276,7 +281,7 @@
                                     <span class="chip">📧 @user.Email</span>
                                 </td>
                                 <td>
-                                    <span class="chip">@user.Role.Replace('_', ' ').ToUpperInvariant()</span>
+                                    <span class="chip">@roleForDisplay</span>
                                 </td>
                                 <td>
                                     <span class="chip">🏢 @user.Department?.Name</span>

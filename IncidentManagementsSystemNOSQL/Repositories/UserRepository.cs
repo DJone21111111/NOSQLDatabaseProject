@@ -1,6 +1,6 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using MongoDB.Driver;
-using System.Linq;
+using static IncidentManagementsSystemNOSQL.Models.Enums;
 
 namespace IncidentManagementsSystemNOSQL.Repositories
 {
@@ -20,7 +20,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         {
             try
             {
-                return _users.Find(u => u.UserName == username).FirstOrDefault();
+                return _users.Find(u => u.UserName.ToLower() == username.ToLower()).FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -57,8 +57,8 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             try
             {
                 return _users.Find(FilterDefinition<User>.Empty)
-                                       .SortBy(u => u.EmployeeId)
-                                       .ToList();
+                             .SortBy(u => u.EmployeeId)
+                             .ToList();
             }
             catch (Exception ex)
             {
@@ -70,9 +70,9 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         {
             try
             {
-                return _users.Find(u => u.IsActive && u.Role == "service_desk")
-                    .SortBy(u => u.EmployeeId)
-                    .ToList();
+                return _users.Find(u => u.IsActive && u.Role == UserRole.service_desk)
+                             .SortBy(u => u.EmployeeId)
+                             .ToList();
             }
             catch (Exception ex)
             {
@@ -87,8 +87,7 @@ namespace IncidentManagementsSystemNOSQL.Repositories
                 var filter = Builders<User>.Filter.Eq(u => u.Id, id);
                 var update = Builders<User>.Update
                     .Set(u => u.PasswordHash, newPasswordHash)
-                    .Set(u => u.UpdatedAt, DateTime.UtcNow); 
-
+                    .Set(u => u.UpdatedAt, DateTime.UtcNow);
                 _users.UpdateOne(filter, update);
             }
             catch (Exception ex)
@@ -101,6 +100,12 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(user.EmployeeId))
+                {
+                    user.EmployeeId = GetNextEmployeeId();
+                }
+                user.CreatedAt = DateTime.UtcNow;
+                user.UpdatedAt = DateTime.UtcNow;
                 _users.InsertOne(user);
             }
             catch (Exception ex)
@@ -109,15 +114,16 @@ namespace IncidentManagementsSystemNOSQL.Repositories
             }
         }
 
-        public void UpdateUser(User user)
+        public void UpdateUser(string id, User updated)
         {
             try
             {
-                _users.ReplaceOne(u => u.Id == user.Id, user);
+                updated.UpdatedAt = DateTime.UtcNow;
+                _users.ReplaceOne(u => u.Id == id, updated);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error while updating user '{user.EmployeeId}'", ex);
+                throw new Exception($"Error while updating user '{id}'", ex);
             }
         }
 
@@ -141,38 +147,14 @@ namespace IncidentManagementsSystemNOSQL.Repositories
                 var update = Builders<Counter>.Update.Inc(c => c.SequenceValue, 1);
                 var options = new FindOneAndUpdateOptions<Counter>
                 {
-                    ReturnDocument = ReturnDocument.After
+                    ReturnDocument = ReturnDocument.After,
+                    IsUpsert = true
                 };
-
                 var counter = _counters.FindOneAndUpdate(counterFilter, update, options);
-
                 if (counter == null)
                 {
-                    var seedValue = DetermineSeedValue() + 1;
-
-                    try
-                    {
-                        var newCounter = new Counter
-                        {
-                            Id = EmployeeCounterId,
-                            SequenceValue = seedValue
-                        };
-
-                        _counters.InsertOne(newCounter);
-                        return FormatEmployeeId(seedValue);
-                    }
-                    catch (MongoWriteException writeEx) when (writeEx.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-                    {
-                        counter = _counters.FindOneAndUpdate(counterFilter, update, options);
-                        if (counter != null)
-                        {
-                            return FormatEmployeeId(counter.SequenceValue);
-                        }
-                    }
-
-                    throw new InvalidOperationException("Unable to initialize the employee ID counter.");
+                    throw new InvalidOperationException("Unable to initialize employee ID counter.");
                 }
-
                 return FormatEmployeeId(counter.SequenceValue);
             }
             catch (Exception ex)
@@ -190,17 +172,14 @@ namespace IncidentManagementsSystemNOSQL.Repositories
                     new CreateIndexModel<User>(
                         Builders<User>.IndexKeys.Ascending(u => u.EmployeeId),
                         new CreateIndexOptions { Unique = true, Name = "ux_employeeId" }),
-
                     new CreateIndexModel<User>(
                         Builders<User>.IndexKeys.Ascending(u => u.Email),
                         new CreateIndexOptions { Unique = true, Name = "ux_email" }),
-
                     new CreateIndexModel<User>(
                         Builders<User>.IndexKeys.Ascending(u => u.UserName),
-                        new CreateIndexOptions { Unique = true, Name = "ux_username" }),
+                        new CreateIndexOptions { Unique = true, Name = "ux_username" })
                 };
-
-                _users.Indexes.CreateManyAsync(models).Wait();
+                _users.Indexes.CreateMany(models);
             }
             catch (Exception ex)
             {
@@ -211,20 +190,16 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         private long DetermineSeedValue()
         {
             const long defaultSeed = 1000;
-
             try
             {
                 var employeeIds = _users.Find(FilterDefinition<User>.Empty)
                     .Project(u => u.EmployeeId)
                     .ToList();
-
                 if (employeeIds.Count == 0)
                 {
                     return defaultSeed;
                 }
-
                 var maxValue = defaultSeed;
-
                 foreach (var employeeId in employeeIds)
                 {
                     if (TryParseEmployeeNumber(employeeId, out var parsed) && parsed > maxValue)
@@ -232,7 +207,6 @@ namespace IncidentManagementsSystemNOSQL.Repositories
                         maxValue = parsed;
                     }
                 }
-
                 return maxValue;
             }
             catch
@@ -244,12 +218,10 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         private static bool TryParseEmployeeNumber(string employeeId, out long number)
         {
             number = 0;
-
             if (string.IsNullOrWhiteSpace(employeeId))
             {
                 return false;
             }
-
             var numericPart = new string(employeeId.Where(char.IsDigit).ToArray());
             return long.TryParse(numericPart, out number);
         }

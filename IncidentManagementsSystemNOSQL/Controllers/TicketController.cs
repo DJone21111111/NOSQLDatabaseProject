@@ -1,10 +1,12 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
+using static IncidentManagementsSystemNOSQL.Models.Enums;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
+    [Authorize(Roles = nameof(UserRole.service_desk))]
     public class TicketController : Controller
     {
         private readonly ITicketService _ticketService;
@@ -15,6 +17,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             _ticketService = ticketService;
             _logger = logger;
         }
+
         public IActionResult Index()
         {
             try
@@ -69,7 +72,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             try
             {
                 ticket.DateCreated = DateTime.UtcNow;
-                ticket.Status = "open";
+                ticket.Status = TicketStatus.open;
 
                 _ticketService.AddTicket(ticket);
                 return RedirectToAction(nameof(Index));
@@ -86,7 +89,6 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-
                 Ticket? ticket = _ticketService.GetById(id);
                 if (ticket == null)
                 {
@@ -101,7 +103,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-    [HttpPost]
+        [HttpPost]
         public IActionResult Edit(Ticket ticket)
         {
             _logger.LogInformation("Edit POST called with ticket.Id {TicketId}", ticket?.Id);
@@ -123,22 +125,18 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                     return RedirectToAction("Index", "Dashboard");
                 }
 
-                // Copy immutable fields so we don't rely on hidden inputs
                 ticket.TicketId = existingTicket.TicketId;
                 ticket.Employee = existingTicket.Employee;
                 ticket.AssignedTo = existingTicket.AssignedTo;
                 ticket.Comments = existingTicket.Comments;
                 ticket.DateCreated = existingTicket.DateCreated;
-
-                // Keep original DateClosed unless we are changing status
                 ticket.DateClosed = existingTicket.DateClosed;
 
-                // Automatically set DateClosed if status is being changed to closed
-                if ((ticket.Status == "closed_resolved" || ticket.Status == "closed_no_resolve"))
+                if (ticket.Status == TicketStatus.closed_resolved || ticket.Status == TicketStatus.closed_no_resolve)
                 {
                     ticket.DateClosed ??= DateTime.UtcNow;
                 }
-                else if (ticket.Status == "open" || ticket.Status == "in_progress")
+                else if (ticket.Status == TicketStatus.open || ticket.Status == TicketStatus.in_progress)
                 {
                     ticket.DateClosed = null;
                 }
@@ -157,19 +155,18 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        // Quick action to close a ticket
-    [HttpPost]
+        [HttpPost]
         public IActionResult CloseTicket([FromForm] string? id, [FromForm] string? reason)
         {
             _logger.LogInformation("CloseTicket called with id={TicketId}, reason={Reason}", id, reason);
-            
+
             if (string.IsNullOrEmpty(id))
             {
                 _logger.LogWarning("CloseTicket called with empty id parameter");
                 TempData["ErrorMessage"] = "Invalid ticket ID";
                 return RedirectToAction("Index", "Dashboard");
             }
-            
+
             try
             {
                 Ticket? ticket = _ticketService.GetById(id);
@@ -180,10 +177,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                     return RedirectToAction("Index", "Dashboard");
                 }
 
-                // Set ticket to closed
-                ticket.Status = reason == "resolved" ? "closed_resolved" : "closed_no_resolve";
+                ticket.Status = (reason == "resolved" ? TicketStatus.closed_resolved : TicketStatus.closed_no_resolve);
                 ticket.DateClosed = DateTime.UtcNow;
-                
+
                 _logger.LogInformation("Closing ticket {TicketNumber} with status {Status}", ticket.TicketId, ticket.Status);
                 _ticketService.UpdateTicket(id, ticket);
                 TempData["SuccessMessage"] = $"Ticket {ticket.TicketId} has been closed successfully!";
@@ -230,7 +226,5 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 return StatusCode(500, "An error occurred while deleting the ticket.");
             }
         }
-
-       
     }
 }
