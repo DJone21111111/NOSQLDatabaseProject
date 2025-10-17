@@ -9,7 +9,7 @@
         public string Token { get; set; }
 
         [System.ComponentModel.DataAnnotations.Required]
-        [System.ComponentModel.DataAnnotations.MinLength(12)]
+        [System.ComponentModel.DataAnnotations.MinLength(6)]
         [System.ComponentModel.DataAnnotations.DataType(System.ComponentModel.DataAnnotations.DataType.Password)]
         public string NewPassword { get; set; }
 
