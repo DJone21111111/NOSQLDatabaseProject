@@ -10,22 +10,25 @@ using Microsoft.AspNetCore.Mvc;
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
     public class AccountController : Controller
-    {
+    {   
         private readonly ILogger<AccountController> _logger;
         private readonly IUserService _userService;
         private readonly IPasswordHasher _passwordHasher;
         private readonly IDatabaseHealthService _databaseHealthService;
+        private readonly IPasswordResetService _passwordResetService;
 
         public AccountController(
             ILogger<AccountController> logger,
             IUserService userService,
             IPasswordHasher passwordHasher,
-            IDatabaseHealthService databaseHealthService)
+            IDatabaseHealthService databaseHealthService,
+            IPasswordResetService passwordResetService)
         {
             _logger = logger;
             _userService = userService;
             _passwordHasher = passwordHasher;
             _databaseHealthService = databaseHealthService;
+            _passwordResetService = passwordResetService;
         }
 
         [AllowAnonymous]
@@ -145,8 +148,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult SetPassword(SetPasswordViewModel model)
         {
-            if (!ModelState.IsValid)
-                return View(model);
+            if (!ModelState.IsValid) return View(model);
 
             var user = _userService.GetUserByUsername(model.Username);
             if (user == null)
@@ -236,6 +238,48 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 _logger.LogError(ex, "Failed to render error view");
                 return StatusCode(500, "An unexpected error occurred while rendering the error page.");
             }
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View(new ForgotPasswordViewModel());
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            _passwordResetService.IssueTokenByUsername(model.Username, ip);
+            return View("ForgotPasswordConfirmation");
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult ResetPassword(string uid, string token)
+        {
+            if (string.IsNullOrWhiteSpace(uid) || string.IsNullOrWhiteSpace(token)) return BadRequest();
+            return View(new ResetPasswordViewModel { UserId = uid, Token = token });
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ResetPassword(ResetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+            var ok = _passwordResetService.ResetPassword(model.UserId, model.Token, model.NewPassword);
+            if (!ok)
+            {
+                ModelState.AddModelError("", "The reset link is invalid or has expired.");
+                return View(model);
+            }
+            TempData["SuccessMessage"] = "Your password has been reset. Please sign in.";
+            return RedirectToAction("Login");
         }
     }
 }
