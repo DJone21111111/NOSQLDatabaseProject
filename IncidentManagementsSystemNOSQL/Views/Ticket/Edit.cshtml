@@ -2,6 +2,15 @@
 
 @{
     ViewData["Title"] = "Edit Ticket";
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
 }
 
 <style>
@@ -207,9 +216,20 @@
                                         <small>⚠️ Not assigned yet</small>
                                     </div>
                                 }
-                                <small class="form-text text-muted">
-                                    Assignment feature coming soon
-                                </small>
+                                <div class="mb-3">
+                                    <label for="newUserId" class="form-label fw-bold">Transfer Ticket To</label>
+                                    <select name="newUserId" id="newUserId" class="form-select">
+                                        <option value="">-- Select Service Desk Agent --</option>
+                                        @foreach (var user in ViewBag.ServiceDeskUsers as List<IncidentManagementsSystemNOSQL.Models.User>)
+                                        {
+                                            <option value="@user.Id">@user.Name (@user.Email)</option>
+                                        }
+                                    </select>
+                                    <small class="form-text text-muted mt-1">
+                                        Select a different service desk agent to transfer this ticket.
+                                    </small>
+                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -269,6 +289,28 @@
             </div>
         </div>
     </form>
+    <div class="card form-card mt-4">
+        <div class="card-body p-4">
+            <h5>🔁 Transfer Ticket</h5>
+            <form asp-action="ReassignTicket" method="post">
+                <input type="hidden" name="ticketId" value="@Model.Id" />
+
+                <div class="mb-3">
+                    <label for="newUserId" class="form-label fw-bold">Transfer To:</label>
+                    <select name="newUserId" class="form-select" required>
+                        <option value="">-- Select Service Desk Agent --</option>
+                        @foreach (var user in ViewBag.ServiceDeskUsers as List<IncidentManagementsSystemNOSQL.Models.User>)
+                        {
+                            <option value="@user.Id">@user.Name (@user.Email)</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-warning">🔁 Transfer Ticket</button>
+            </form>
+        </div>
+    </div>
+
 </div>
 
 @section Scripts {

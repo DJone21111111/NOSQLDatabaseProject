@@ -10,11 +10,13 @@ namespace IncidentManagementsSystemNOSQL.Controllers
     public class TicketController : Controller
     {
         private readonly ITicketService _ticketService;
+        private readonly IUserService _userService;
         private readonly ILogger<TicketController> _logger;
 
-        public TicketController(ITicketService ticketService, ILogger<TicketController> logger)
+        public TicketController(ITicketService ticketService, IUserService userService, ILogger<TicketController> logger)
         {
             _ticketService = ticketService;
+            _userService = userService;
             _logger = logger;
         }
 
@@ -94,6 +96,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 {
                     return NotFound();
                 }
+                var agents = _userService.GetServiceDeskAgents();
+                ViewBag.ServiceDeskUsers = agents;
+
                 return View(ticket);
             }
             catch (Exception ex)
@@ -225,6 +230,42 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 _logger.LogError(ex, "Error deleting ticket {TicketId}", id);
                 return StatusCode(500, "An error occurred while deleting the ticket.");
             }
+        }
+        [HttpPost]
+        public IActionResult ReassignTicket(string ticketId, string newUserId)
+        {
+            if (string.IsNullOrWhiteSpace(ticketId) || string.IsNullOrWhiteSpace(newUserId))
+            {
+                TempData["Error"] = "Ticket ID and new user ID are required.";
+                return RedirectToAction("Edit", new { id = ticketId });
+            }
+
+            var ticket = _ticketService.GetById(ticketId);
+            if (ticket == null)
+            {
+                TempData["Error"] = "Ticket not found.";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            var newUser = _userService.GetUserById(newUserId);
+            if (newUser == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction("Edit", new { id = ticketId });
+            }
+
+            ticket.AssignedTo = new CommentAuthorEmbedded
+            {
+                EmployeeId = newUser.EmployeeId,
+                Name = newUser.Name,
+                Email = newUser.Email,
+                Role = newUser.Role.ToString()
+            };
+
+            _ticketService.UpdateTicket(ticketId, ticket);
+
+            TempData["Success"] = $"Ticket transferred to {newUser.Name}.";
+            return RedirectToAction("Edit", new { id = ticketId });
         }
     }
 }
