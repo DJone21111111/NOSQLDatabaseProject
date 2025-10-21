@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Models.Api;
 using IncidentManagementsSystemNOSQL.Service;
+using static IncidentManagementsSystemNOSQL.Models.Enums;
 
 namespace IncidentManagementsSystemNOSQL.Controllers.Api
 {
@@ -22,13 +23,10 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             _logger = logger;
         }
 
-    /// <summary>
-    /// Retrieves the full collection of tickets available in the system.
-    /// </summary>
-    /// <returns>A list of <see cref="TicketDto"/> records.</returns>
-    [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        /// <summary>Retrieves the full collection of tickets available in the system.</summary>
+        [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<IEnumerable<TicketDto>> GetAll()
         {
             try
@@ -49,15 +47,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             }
         }
 
-    /// <summary>
-    /// Retrieves a single ticket using its MongoDB identifier.
-    /// </summary>
-    /// <param name="id">The MongoDB document identifier of the ticket.</param>
-    /// <returns>The matching <see cref="TicketDto"/> when found.</returns>
-    [HttpGet("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        /// <summary>Retrieves a single ticket using its MongoDB identifier.</summary>
+        [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<TicketDto> GetById(string id)
         {
             try
@@ -77,15 +71,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             }
         }
 
-    /// <summary>
-    /// Creates a new ticket for the specified reporter.
-    /// </summary>
-    /// <param name="request">The ticket information to persist.</param>
-    /// <returns>The created <see cref="TicketDto"/> with identifiers populated.</returns>
-    [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        /// <summary>Creates a new ticket for the specified reporter.</summary>
+        [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<TicketDto> Create([FromBody] TicketCreateRequest request)
         {
             if (!ModelState.IsValid)
@@ -114,17 +104,12 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             }
         }
 
-    /// <summary>
-    /// Updates an existing ticket with new title, description, or status details.
-    /// </summary>
-    /// <param name="id">The MongoDB document identifier of the ticket.</param>
-    /// <param name="request">The fields to update on the ticket.</param>
-    /// <returns>The refreshed <see cref="TicketDto"/> after persistence.</returns>
-    [HttpPut("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        /// <summary>Updates an existing ticket with new title, description, or status details.</summary>
+        [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<TicketDto> Update(string id, [FromBody] TicketUpdateRequest request)
         {
             if (!ModelState.IsValid)
@@ -142,13 +127,20 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
 
                 existingTicket.Title = request.Title;
                 existingTicket.Description = request.Description;
-                existingTicket.Status = request.Status;
 
-                if (request.Status == "closed_resolved" || request.Status == "closed_no_resolve")
+                if (!Enum.TryParse<TicketStatus>(request.Status, true, out var parsedStatus))
+                {
+                    ModelState.AddModelError(nameof(request.Status), "Invalid ticket status.");
+                    return ValidationProblem(ModelState);
+                }
+
+                existingTicket.Status = parsedStatus;
+
+                if (parsedStatus == TicketStatus.closed_resolved || parsedStatus == TicketStatus.closed_no_resolve)
                 {
                     existingTicket.DateClosed = DateTime.UtcNow;
                 }
-                else if (request.Status == "open" || request.Status == "in_progress")
+                else if (parsedStatus == TicketStatus.open || parsedStatus == TicketStatus.in_progress)
                 {
                     existingTicket.DateClosed = null;
                 }
@@ -164,15 +156,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             }
         }
 
-    /// <summary>
-    /// Deletes a ticket from the system.
-    /// </summary>
-    /// <param name="id">The MongoDB document identifier of the ticket.</param>
-    /// <returns>No content when the ticket is successfully removed.</returns>
-    [HttpDelete("{id}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        /// <summary>Deletes a ticket from the system.</summary>
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public IActionResult Delete(string id)
         {
             try
@@ -195,12 +183,12 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
 
         private static TicketDto MapToTicketDto(Ticket ticket)
         {
-            TicketReporterDto reporter = new TicketReporterDto
+            var reporter = new TicketReporterDto
             {
                 EmployeeId = ticket.Employee?.EmployeeId ?? string.Empty,
                 Name = ticket.Employee?.Name ?? string.Empty,
                 Email = ticket.Employee?.Email ?? string.Empty,
-                Role = ticket.Employee?.Role ?? string.Empty,
+                Role = ticket.Employee?.Role.ToString() ?? string.Empty,
                 DepartmentName = ticket.Employee?.Department?.Name ?? string.Empty,
                 DepartmentDescription = ticket.Employee?.Department?.Description ?? string.Empty
             };
@@ -213,52 +201,51 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
                     EmployeeId = ticket.AssignedTo.EmployeeId ?? string.Empty,
                     Name = ticket.AssignedTo.Name ?? string.Empty,
                     Email = ticket.AssignedTo.Email ?? string.Empty,
-                    Role = ticket.AssignedTo.Role ?? string.Empty
+                    Role = ticket.AssignedTo.Role.ToString()
                 };
             }
 
-            TicketDto dto = new TicketDto
+            return new TicketDto
             {
                 Id = ticket.Id ?? string.Empty,
                 TicketId = ticket.TicketId ?? string.Empty,
                 Title = ticket.Title ?? string.Empty,
                 Description = ticket.Description,
-                Status = ticket.Status ?? string.Empty,
+                Status = ticket.Status.ToString(),
                 DateCreatedUtc = ticket.DateCreated,
                 DateClosedUtc = ticket.DateClosed,
                 Reporter = reporter,
                 AssignedTo = assignment
             };
-
-            return dto;
         }
 
         private static Ticket MapToTicket(TicketCreateRequest request)
         {
-            DepartmentEmbedded department = new DepartmentEmbedded
+            var department = new DepartmentEmbedded
             {
                 DepartmentId = request.Reporter.Department.DepartmentId,
                 Name = request.Reporter.Department.Name,
                 Description = request.Reporter.Department.Description
             };
 
-            EmployeeEmbedded employee = new EmployeeEmbedded
+            UserRole parsedRole = UserRole.employee;
+            Enum.TryParse<UserRole>(request.Reporter.Role, true, out parsedRole);
+
+            var employee = new EmployeeEmbedded
             {
                 EmployeeId = request.Reporter.EmployeeId,
                 Name = request.Reporter.Name,
                 Email = request.Reporter.Email,
-                Role = request.Reporter.Role,
+                Role = parsedRole.ToString(),
                 Department = department
             };
 
-            Ticket ticket = new Ticket
+            return new Ticket
             {
                 Title = request.Title,
                 Description = request.Description,
                 Employee = employee
             };
-
-            return ticket;
         }
     }
 }

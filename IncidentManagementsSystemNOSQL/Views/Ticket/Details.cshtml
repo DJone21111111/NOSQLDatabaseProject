@@ -1,7 +1,22 @@
 @model IncidentManagementsSystemNOSQL.Models.Ticket
+@using System.Linq
+@using static IncidentManagementsSystemNOSQL.Models.Enums
 
 @{
     ViewData["Title"] = "Ticket Details";
+    var status = Model.Status;
+    string StatusBadgeHtml()
+    {
+        if (status == TicketStatus.open)
+            return "<span class=\"badge bg-success\" style=\"font-size: 1rem; padding: 0.5rem 1rem;\">🟢 Open</span>";
+        if (status == TicketStatus.in_progress)
+            return "<span class=\"badge bg-warning text-dark\" style=\"font-size: 1rem; padding: 0.5rem 1rem;\">⚙️ In Progress</span>";
+        if (status == TicketStatus.closed_resolved)
+            return "<span class=\"badge bg-secondary\" style=\"font-size: 1rem; padding: 0.5rem 1rem;\">✅ Closed - Resolved</span>";
+        if (status == TicketStatus.closed_no_resolve)
+            return "<span class=\"badge bg-dark\" style=\"font-size: 1rem; padding: 0.5rem 1rem;\">❌ Closed - No Resolve</span>";
+        return $"<span class=\"badge bg-info\" style=\"font-size: 1rem; padding: 0.5rem 1rem;\">{status}</span>";
+    }
 }
 
 <style>
@@ -13,23 +28,23 @@
         margin-bottom: 2rem;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-    
+
     .info-card {
         border: none;
         border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.07);
         margin-bottom: 1.5rem;
     }
-    
+
     .info-section {
         padding: 1.5rem;
         border-bottom: 1px solid #e9ecef;
     }
-    
-    .info-section:last-child {
-        border-bottom: none;
-    }
-    
+
+        .info-section:last-child {
+            border-bottom: none;
+        }
+
     .info-label {
         font-weight: 600;
         color: #6c757d;
@@ -38,12 +53,12 @@
         letter-spacing: 0.5px;
         margin-bottom: 0.5rem;
     }
-    
+
     .info-value {
         font-size: 1rem;
         color: #212529;
     }
-    
+
     .comment-card {
         background: #f8f9fa;
         border-left: 4px solid #667eea;
@@ -54,7 +69,6 @@
 </style>
 
 <div class="container-fluid px-4 py-3">
-    <!-- Header -->
     <div class="details-header">
         <div class="d-flex justify-content-between align-items-start">
             <div>
@@ -62,35 +76,18 @@
                 <p class="mb-0 opacity-75">Ticket ID: <strong>@Model.TicketId</strong></p>
             </div>
             <div>
-                @if (Model.Status == "open")
-                {
-                    <span class="badge bg-success" style="font-size: 1rem; padding: 0.5rem 1rem;">🟢 Open</span>
-                }
-                else if (Model.Status == "in_progress")
-                {
-                    <span class="badge bg-warning text-dark" style="font-size: 1rem; padding: 0.5rem 1rem;">⚙️ In Progress</span>
-                }
-                else if (Model.Status == "closed_resolved")
-                {
-                    <span class="badge bg-secondary" style="font-size: 1rem; padding: 0.5rem 1rem;">✅ Closed - Resolved</span>
-                }
-                else
-                {
-                    <span class="badge bg-dark" style="font-size: 1rem; padding: 0.5rem 1rem;">❌ Closed - No Resolve</span>
-                }
+                @Html.Raw(StatusBadgeHtml())
             </div>
         </div>
     </div>
 
     <div class="row">
-        <!-- Left Column -->
         <div class="col-lg-8">
-            <!-- Description -->
             <div class="card info-card">
                 <div class="info-section">
                     <div class="info-label">📝 Description</div>
                     <div class="info-value">
-                        @if (!string.IsNullOrEmpty(Model.Description))
+                        @if (!string.IsNullOrWhiteSpace(Model.Description))
                         {
                             <p class="mb-0">@Model.Description</p>
                         }
@@ -102,7 +99,6 @@
                 </div>
             </div>
 
-            <!-- Reporter Information -->
             <div class="card info-card">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">👤 Reporter Information</h5>
@@ -111,45 +107,47 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <div class="info-label">Employee Name</div>
-                            <div class="info-value">@Model.Employee.Name</div>
+                            <div class="info-value">@((Model.Employee?.Name) ?? "Unknown")</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <div class="info-label">Employee ID</div>
-                            <div class="info-value">@Model.Employee.EmployeeId</div>
+                            <div class="info-value">@((Model.Employee?.EmployeeId) ?? "-")</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <div class="info-label">Email</div>
-                            <div class="info-value">@Model.Employee.Email</div>
+                            <div class="info-value">@((Model.Employee?.Email) ?? "-")</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <div class="info-label">Department</div>
                             <div class="info-value">
-                                <span class="badge bg-light text-dark">@Model.Employee.Department.Name</span>
+                                <span class="badge bg-light text-dark">@((Model.Employee?.Department?.Name) ?? "Unknown")</span>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="info-label">Department Description</div>
-                            <div class="info-value">@Model.Employee.Department.Description</div>
+                            <div class="info-value">@((Model.Employee?.Department?.Description) ?? "-")</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Comments Section -->
             <div class="card info-card">
                 <div class="card-header bg-light">
-                    <h5 class="mb-0">💬 Comments (@Model.Comments.Count)</h5>
+                    <h5 class="mb-0">💬 Comments (@(Model.Comments?.Count ?? 0))</h5>
                 </div>
                 <div class="card-body">
-                    @if (Model.Comments.Any())
+                    @if (Model.Comments?.Any() == true)
                     {
                         @foreach (var comment in Model.Comments.OrderBy(c => c.CreatedAt))
                         {
                             <div class="comment-card">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div>
-                                        <strong>@comment.Author.Name</strong>
-                                        <span class="badge bg-secondary ms-2">@comment.Author.EmployeeId</span>
+                                        <strong>@(comment.Author?.Name ?? "Unknown")</strong>
+                                        @if (!string.IsNullOrWhiteSpace(comment.Author?.EmployeeId))
+                                        {
+                                            <span class="badge bg-secondary ms-2">@comment.Author.EmployeeId</span>
+                                        }
                                     </div>
                                     <small class="text-muted">
                                         @comment.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
@@ -167,9 +165,7 @@
             </div>
         </div>
 
-        <!-- Right Column -->
         <div class="col-lg-4">
-            <!-- Timeline -->
             <div class="card info-card">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">📅 Timeline</h5>
@@ -228,7 +224,6 @@
                 </div>
             </div>
 
-            <!-- Assignment -->
             <div class="card info-card">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">👥 Assignment</h5>
@@ -252,7 +247,6 @@
                 </div>
             </div>
 
-            <!-- Actions -->
             <div class="card info-card">
                 <div class="card-body">
                     <div class="d-grid gap-2">

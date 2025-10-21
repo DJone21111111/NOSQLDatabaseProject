@@ -11,18 +11,18 @@ namespace IncidentManagementsSystemNOSQL.Models
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = null!;
-        
+
         [BsonElement("employeeId")]
         public string EmployeeId { get; set; } = null!;
-        
+
         [BsonElement("name")]
         public string Name { get; set; } = null!;
-        
+
         [BsonElement("email")]
         public string Email { get; set; } = null!;
-        
+
         [BsonElement("role")]
-        public string Role { get; set; } = "employee";
+        public Enums.UserRole Role { get; set; }
 
         // User Department
         [BsonElement("department")]
@@ -31,10 +31,10 @@ namespace IncidentManagementsSystemNOSQL.Models
         // user Account
         [BsonElement("isActive")]
         public bool IsActive { get; set; } = true;
-        
+
         [BsonElement("username")]
         public string UserName { get; set; } = null!;
-        
+
         [BsonElement("passwordHash")]
         public string PasswordHash { get; set; } = null!;
 
@@ -45,7 +45,7 @@ namespace IncidentManagementsSystemNOSQL.Models
         // Timestamps (We know when the user was created and last updated)
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        
+
         [BsonElement("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }

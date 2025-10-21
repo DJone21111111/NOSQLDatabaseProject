@@ -1,20 +1,25 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Service;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
+using static IncidentManagementsSystemNOSQL.Models.Enums;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
+    [Authorize(Roles = nameof(UserRole.service_desk))]
     public class TicketController : Controller
     {
         private readonly ITicketService _ticketService;
+        private readonly IUserService _userService;
         private readonly ILogger<TicketController> _logger;
 
-        public TicketController(ITicketService ticketService, ILogger<TicketController> logger)
+        public TicketController(ITicketService ticketService, IUserService userService, ILogger<TicketController> logger)
         {
             _ticketService = ticketService;
+            _userService = userService;
             _logger = logger;
         }
+
         public IActionResult Index()
         {
             try
@@ -69,7 +74,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             try
             {
                 ticket.DateCreated = DateTime.UtcNow;
-                ticket.Status = "open";
+                ticket.Status = TicketStatus.open;
 
                 _ticketService.AddTicket(ticket);
                 return RedirectToAction(nameof(Index));
@@ -86,12 +91,14 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-
                 Ticket? ticket = _ticketService.GetById(id);
                 if (ticket == null)
                 {
                     return NotFound();
                 }
+                var agents = _userService.GetServiceDeskAgents();
+                ViewBag.ServiceDeskUsers = agents;
+
                 return View(ticket);
             }
             catch (Exception ex)
@@ -101,7 +108,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-    [HttpPost]
+        [HttpPost]
         public IActionResult Edit(Ticket ticket)
         {
             _logger.LogInformation("Edit POST called with ticket.Id {TicketId}", ticket?.Id);
@@ -123,22 +130,18 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                     return RedirectToAction("Index", "Dashboard");
                 }
 
-                // Copy immutable fields so we don't rely on hidden inputs
                 ticket.TicketId = existingTicket.TicketId;
                 ticket.Employee = existingTicket.Employee;
                 ticket.AssignedTo = existingTicket.AssignedTo;
                 ticket.Comments = existingTicket.Comments;
                 ticket.DateCreated = existingTicket.DateCreated;
-
-                // Keep original DateClosed unless we are changing status
                 ticket.DateClosed = existingTicket.DateClosed;
 
-                // Automatically set DateClosed if status is being changed to closed
-                if ((ticket.Status == "closed_resolved" || ticket.Status == "closed_no_resolve"))
+                if (ticket.Status == TicketStatus.closed_resolved || ticket.Status == TicketStatus.closed_no_resolve)
                 {
                     ticket.DateClosed ??= DateTime.UtcNow;
                 }
-                else if (ticket.Status == "open" || ticket.Status == "in_progress")
+                else if (ticket.Status == TicketStatus.open || ticket.Status == TicketStatus.in_progress)
                 {
                     ticket.DateClosed = null;
                 }
@@ -157,19 +160,18 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
-        // Quick action to close a ticket
-    [HttpPost]
+        [HttpPost]
         public IActionResult CloseTicket([FromForm] string? id, [FromForm] string? reason)
         {
             _logger.LogInformation("CloseTicket called with id={TicketId}, reason={Reason}", id, reason);
-            
+
             if (string.IsNullOrEmpty(id))
             {
                 _logger.LogWarning("CloseTicket called with empty id parameter");
                 TempData["ErrorMessage"] = "Invalid ticket ID";
                 return RedirectToAction("Index", "Dashboard");
             }
-            
+
             try
             {
                 Ticket? ticket = _ticketService.GetById(id);
@@ -180,10 +182,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                     return RedirectToAction("Index", "Dashboard");
                 }
 
-                // Set ticket to closed
-                ticket.Status = reason == "resolved" ? "closed_resolved" : "closed_no_resolve";
+                ticket.Status = (reason == "resolved" ? TicketStatus.closed_resolved : TicketStatus.closed_no_resolve);
                 ticket.DateClosed = DateTime.UtcNow;
-                
+
                 _logger.LogInformation("Closing ticket {TicketNumber} with status {Status}", ticket.TicketId, ticket.Status);
                 _ticketService.UpdateTicket(id, ticket);
                 TempData["SuccessMessage"] = $"Ticket {ticket.TicketId} has been closed successfully!";
@@ -230,7 +231,41 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 return StatusCode(500, "An error occurred while deleting the ticket.");
             }
         }
+        [HttpPost]
+        public IActionResult ReassignTicket(string ticketId, string newUserId)
+        {
+            if (string.IsNullOrWhiteSpace(ticketId) || string.IsNullOrWhiteSpace(newUserId))
+            {
+                TempData["Error"] = "Ticket ID and new user ID are required.";
+                return RedirectToAction("Edit", new { id = ticketId });
+            }
 
-       
+            var ticket = _ticketService.GetById(ticketId);
+            if (ticket == null)
+            {
+                TempData["Error"] = "Ticket not found.";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            var newUser = _userService.GetUserById(newUserId);
+            if (newUser == null)
+            {
+                TempData["Error"] = "User not found.";
+                return RedirectToAction("Edit", new { id = ticketId });
+            }
+
+            ticket.AssignedTo = new CommentAuthorEmbedded
+            {
+                EmployeeId = newUser.EmployeeId,
+                Name = newUser.Name,
+                Email = newUser.Email,
+                Role = newUser.Role.ToString()
+            };
+
+            _ticketService.UpdateTicket(ticketId, ticket);
+
+            TempData["Success"] = $"Ticket transferred to {newUser.Name}.";
+            return RedirectToAction("Edit", new { id = ticketId });
+        }
     }
 }

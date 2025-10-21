@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Models.Api;
 using IncidentManagementsSystemNOSQL.Service;
+using static IncidentManagementsSystemNOSQL.Models.Enums;
 
 namespace IncidentManagementsSystemNOSQL.Controllers.Api
 {
@@ -24,13 +21,9 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             _logger = logger;
         }
 
-    /// <summary>
-    /// Retrieves the current user directory.
-    /// </summary>
-    /// <returns>A collection of <see cref="UserDto"/> entries.</returns>
-    [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<IEnumerable<UserDto>> GetAll()
         {
             try
@@ -51,15 +44,10 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             }
         }
 
-    /// <summary>
-    /// Retrieves a user by MongoDB identifier.
-    /// </summary>
-    /// <param name="id">The MongoDB document identifier of the user.</param>
-    /// <returns>The matching <see cref="UserDto"/> when found.</returns>
-    [HttpGet("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<UserDto> GetById(string id)
         {
             try
@@ -79,15 +67,10 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             }
         }
 
-    /// <summary>
-    /// Creates a new user record and assigns a generated employee identifier.
-    /// </summary>
-    /// <param name="request">The details required to create a user.</param>
-    /// <returns>The created <see cref="UserDto"/>.</returns>
-    [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<UserDto> Create([FromBody] UserCreateRequest request)
         {
             if (!ModelState.IsValid)
@@ -97,21 +80,27 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
 
             try
             {
+                if (!Enum.TryParse<UserRole>(request.Role, true, out var parsedRole))
+                {
+                    ModelState.AddModelError(nameof(request.Role), "Invalid role.");
+                    return ValidationProblem(ModelState);
+                }
+
                 string employeeId = _userService.GetNextEmployeeId();
 
-                DepartmentEmbedded department = new DepartmentEmbedded
+                var department = new DepartmentEmbedded
                 {
                     DepartmentId = null,
                     Name = request.DepartmentName,
                     Description = request.DepartmentDescription
                 };
 
-                User user = new User
+                var user = new User
                 {
                     EmployeeId = employeeId,
                     Name = request.Name,
                     Email = request.Email,
-                    Role = request.Role,
+                    Role = parsedRole,
                     Department = department,
                     UserName = request.UserName,
                     IsActive = request.IsActive,
@@ -121,7 +110,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
 
                 _userService.AddUser(user);
 
-                UserDto dto = MapToUserDto(user);
+                var dto = MapToUserDto(user);
                 return CreatedAtAction(nameof(GetById), new { id = user.Id }, dto);
             }
             catch (Exception ex)
@@ -131,17 +120,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             }
         }
 
-    /// <summary>
-    /// Updates an existing user record.
-    /// </summary>
-    /// <param name="id">The MongoDB document identifier of the user.</param>
-    /// <param name="request">The fields to update on the user.</param>
-    /// <returns>The updated <see cref="UserDto"/>.</returns>
-    [HttpPut("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public ActionResult<UserDto> Update(string id, [FromBody] UserUpdateRequest request)
         {
             if (!ModelState.IsValid)
@@ -157,9 +140,15 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
                     return NotFound();
                 }
 
+                if (!Enum.TryParse<UserRole>(request.Role, true, out var parsedRole))
+                {
+                    ModelState.AddModelError(nameof(request.Role), "Invalid role.");
+                    return ValidationProblem(ModelState);
+                }
+
                 existingUser.Name = request.Name;
                 existingUser.Email = request.Email;
-                existingUser.Role = request.Role;
+                existingUser.Role = parsedRole;
                 existingUser.UserName = request.UserName;
                 existingUser.IsActive = request.IsActive;
                 existingUser.MustChangePassword = request.MustChangePassword;
@@ -176,7 +165,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
                 }
 
                 _userService.UpdateUser(id, existingUser);
-                UserDto dto = MapToUserDto(existingUser);
+                var dto = MapToUserDto(existingUser);
                 return Ok(dto);
             }
             catch (Exception ex)
@@ -186,15 +175,10 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
             }
         }
 
-    /// <summary>
-    /// Deletes a user from the directory.
-    /// </summary>
-    /// <param name="id">The MongoDB document identifier of the user.</param>
-    /// <returns>No content when the user is successfully removed.</returns>
-    [HttpDelete("{id}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public IActionResult Delete(string id)
         {
             try
@@ -217,13 +201,13 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
 
         private static UserDto MapToUserDto(User user)
         {
-            UserDto dto = new UserDto
+            return new UserDto
             {
                 Id = user.Id ?? string.Empty,
                 EmployeeId = user.EmployeeId ?? string.Empty,
                 Name = user.Name ?? string.Empty,
                 Email = user.Email ?? string.Empty,
-                Role = user.Role ?? string.Empty,
+                Role = user.Role.ToString(),
                 DepartmentName = user.Department?.Name ?? string.Empty,
                 DepartmentDescription = user.Department?.Description ?? string.Empty,
                 UserName = user.UserName ?? string.Empty,
@@ -232,8 +216,6 @@ namespace IncidentManagementsSystemNOSQL.Controllers.Api
                 CreatedAtUtc = user.CreatedAt,
                 UpdatedAtUtc = user.UpdatedAt
             };
-
-            return dto;
         }
     }
 }

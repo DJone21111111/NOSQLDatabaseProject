@@ -78,7 +78,6 @@ namespace IncidentManagementsSystemNOSQL.Service
             {
                 user.CreatedAt = DateTime.UtcNow;
                 user.UpdatedAt = DateTime.UtcNow;
-
                 _userRepository.AddUser(user);
             }
             catch (Exception ex)
@@ -87,14 +86,18 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
+        public void SetPassword(string userId, string newPasswordHash)
+        {
+            _userRepository.SetPasswordHash(userId, newPasswordHash);
+        }
+
         public void UpdateUser(string id, User updatedUser)
         {
             try
             {
                 updatedUser.Id = id;
                 updatedUser.UpdatedAt = DateTime.UtcNow;
-
-                _userRepository.UpdateUser(updatedUser);
+                _userRepository.UpdateUser(id, updatedUser);
             }
             catch (Exception ex)
             {

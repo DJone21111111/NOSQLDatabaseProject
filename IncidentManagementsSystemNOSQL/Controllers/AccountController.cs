@@ -1,32 +1,34 @@
+﻿using System.Diagnostics;
+using System.Security.Claims;
 using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Service;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Security.Claims;
 
 namespace IncidentManagementsSystemNOSQL.Controllers
 {
     public class AccountController : Controller
-    {
+    {   
         private readonly ILogger<AccountController> _logger;
         private readonly IUserService _userService;
         private readonly IPasswordHasher _passwordHasher;
         private readonly IDatabaseHealthService _databaseHealthService;
+        private readonly IPasswordResetService _passwordResetService;
 
         public AccountController(
             ILogger<AccountController> logger,
             IUserService userService,
             IPasswordHasher passwordHasher,
-            IDatabaseHealthService databaseHealthService)
+            IDatabaseHealthService databaseHealthService,
+            IPasswordResetService passwordResetService)
         {
             _logger = logger;
             _userService = userService;
             _passwordHasher = passwordHasher;
             _databaseHealthService = databaseHealthService;
+            _passwordResetService = passwordResetService;
         }
 
         [AllowAnonymous]
@@ -35,7 +37,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                LoginViewModel viewModel = new LoginViewModel { ReturnUrl = returnUrl };
+                var viewModel = new LoginViewModel { ReturnUrl = returnUrl };
                 return View(viewModel);
             }
             catch (Exception ex)
@@ -48,7 +50,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
         [HttpPost]
-        public IActionResult Login(LoginViewModel vm)
+        public async Task<IActionResult> Login(LoginViewModel vm)
         {
             try
             {
@@ -57,45 +59,57 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                     return View(vm);
                 }
 
-                User? user = _userService.GetUserByUsername(vm.Username);
+                var user = _userService.GetUserByUsername(vm.Username);
                 if (user == null)
                 {
-                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                    ModelState.AddModelError(string.Empty, "Wrong username or password");
                     return View(vm);
                 }
 
-                bool passwordValid = _passwordHasher.VerifyPassword(vm.Password, user.PasswordHash);
+                var passwordValid = _passwordHasher.VerifyPassword(vm.Password, user.PasswordHash);
                 if (!passwordValid || user.IsActive == false)
                 {
-                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                    ModelState.AddModelError(string.Empty, "Wrong username or password");
                     return View(vm);
                 }
 
-                List<Claim> claims = new List<Claim>
+                var role = user.Role;
+
+                var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.UserName),
-                    new Claim(ClaimTypes.Role, user.Role)
+                    new Claim(ClaimTypes.NameIdentifier, user.EmployeeId ?? string.Empty),
+                    new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
+                    new Claim(ClaimTypes.Role, role.ToString()),
+                    new Claim("employee_id", user.EmployeeId ?? string.Empty)
                 };
 
-                ClaimsIdentity identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                ClaimsPrincipal principal = new ClaimsPrincipal(identity);
+                var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
 
-                HttpContext.SignInAsync(
+                await HttpContext.SignInAsync(
                     CookieAuthenticationDefaults.AuthenticationScheme,
                     principal,
                     new AuthenticationProperties
                     {
                         IsPersistent = true,
                         AllowRefresh = true
-                    }).GetAwaiter().GetResult();
+                    });
 
                 if (!string.IsNullOrWhiteSpace(vm.ReturnUrl) && Url.IsLocalUrl(vm.ReturnUrl))
                 {
                     return Redirect(vm.ReturnUrl);
                 }
 
-                return RedirectToAction("Index", "Home");
+                if (role == Enums.UserRole.service_desk)
+                {
+                    return RedirectToAction("Index", "Dashboard");
+                }
+                else if (role == Enums.UserRole.employee)
+                {
+                    return RedirectToAction("Index", "Employee");
+                }
+
+                return RedirectToAction("Login", "Account");
             }
             catch (Exception ex)
             {
@@ -108,11 +122,11 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         [Authorize]
         [ValidateAntiForgeryToken]
         [HttpPost]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
             try
             {
-                HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme).GetAwaiter().GetResult();
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex)
@@ -120,6 +134,34 @@ namespace IncidentManagementsSystemNOSQL.Controllers
                 _logger.LogError(ex, "Failed to sign out current user");
                 return StatusCode(500, "An unexpected error occurred while signing out.");
             }
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult SetPassword()
+        {
+            return View(new SetPasswordViewModel());
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult SetPassword(SetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            var user = _userService.GetUserByUsername(model.Username);
+            if (user == null)
+            {
+                ModelState.AddModelError("", "Username not found. Please contact the Service Desk.");
+                return View(model);
+            }
+
+            var newHash = _passwordHasher.HashPassword(model.Password);
+            _userService.SetPassword(user.Id, newHash);
+
+            TempData["SuccessMessage"] = "Password set successfully. You can now log in.";
+            return RedirectToAction("Login");
         }
 
         [AllowAnonymous]
@@ -168,7 +210,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                MongoHealthResult healthResult = _databaseHealthService.CheckMongoHealth();
+                var healthResult = _databaseHealthService.CheckMongoHealth();
                 if (healthResult.IsHealthy)
                 {
                     return Ok(new { ok = true, collections = healthResult.Collections });
@@ -188,7 +230,7 @@ namespace IncidentManagementsSystemNOSQL.Controllers
         {
             try
             {
-                ErrorViewModel model = new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier };
+                var model = new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier };
                 return View(model);
             }
             catch (Exception ex)
@@ -198,5 +240,46 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             }
         }
 
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View(new ForgotPasswordViewModel());
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            _passwordResetService.IssueTokenByUsername(model.Username, ip);
+            return View("ForgotPasswordConfirmation");
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult ResetPassword(string uid, string token)
+        {
+            if (string.IsNullOrWhiteSpace(uid) || string.IsNullOrWhiteSpace(token)) return BadRequest();
+            return View(new ResetPasswordViewModel { UserId = uid, Token = token });
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult ResetPassword(ResetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+            var ok = _passwordResetService.ResetPassword(model.UserId, model.Token, model.NewPassword);
+            if (!ok)
+            {
+                ModelState.AddModelError("", "The reset link is invalid or has expired.");
+                return View(model);
+            }
+            TempData["SuccessMessage"] = "Your password has been reset. Please sign in.";
+            return RedirectToAction("Login");
+        }
     }
 }
