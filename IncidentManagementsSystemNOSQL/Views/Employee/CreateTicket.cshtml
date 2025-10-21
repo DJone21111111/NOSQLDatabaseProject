@@ -1,0 +1,205 @@
+@model IncidentManagementsSystemNOSQL.Models.EmployeeTicketCreateViewModel
+
+@{
+    ViewData["Title"] = "Report an Issue";
+}
+
+<style>
+    body {
+        background-color: #90a89e;
+        font-family: 'Inter', sans-serif;
+        color: #1e1e1e;
+    }
+
+    .form-wrapper {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(14px);
+        border-radius: 20px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+        color: #1e1e1e;
+        padding: 2.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-wrapper h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2f3d35;
+    }
+
+    .form-wrapper p {
+        color: #4d5d55;
+        margin-bottom: 2rem;
+        font-size: 1rem;
+    }
+
+    .form-control,
+    .form-select,
+    textarea {
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid #c8d3cc;
+        color: #1e1e1e;
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
+        font-size: 1rem;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .form-control:focus,
+    .form-select:focus,
+    textarea:focus {
+        border-color: #7ba08f;
+        box-shadow: 0 0 0 4px rgba(123, 160, 143, 0.2);
+        background: #ffffff;
+    }
+
+    .btn-dark-gradient {
+        background: linear-gradient(135deg, #648d7a, #7ba08f);
+        border: none;
+        color: white;
+        font-weight: 600;
+        padding: 0.8rem 1.8rem;
+        border-radius: 999px;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .btn-dark-gradient:hover {
+        background: linear-gradient(135deg, #7ba08f, #648d7a);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+        color: #fff;
+    }
+
+    .btn-outline-secondary {
+        border: 1px solid #7ba08f;
+        color: #2f3d35;
+        border-radius: 999px;
+        font-weight: 500;
+        padding: 0.8rem 1.8rem;
+        transition: all 0.2s ease;
+        background: transparent;
+    }
+
+    .btn-outline-secondary:hover {
+        background: rgba(123, 160, 143, 0.1);
+        border-color: #648d7a;
+        color: #2a3b32;
+        transform: translateY(-1px);
+    }
+
+    .profile-summary {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        border-radius: 14px;
+        padding: 1.5rem 1.5rem 0.8rem;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(200, 211, 204, 0.4);
+    }
+
+    .profile-summary dt {
+        color: #586a61;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .profile-summary dd {
+        color: #2f3d35;
+        font-weight: 600;
+    }
+
+    .text-muted {
+        color: #4d5d55 !important;
+    }
+
+    .text-danger {
+        font-size: 0.85rem;
+        margin-top: 0.3rem;
+        display: block;
+    }
+
+    @@media (max-width: 768px) {
+        .form-wrapper {
+            padding: 2rem 1.5rem;
+        }
+    }
+</style>
+
+<div class="container-fluid px-4 py-3">
+    <div class="form-wrapper mx-auto" style="max-width: 720px;">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4 gap-3">
+            <div>
+                <h1>🆘 Report a Problem</h1>
+                <p class="mb-0">Share what went wrong so the service desk can help you quickly.</p>
+            </div>
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-route-employeeId="@Model.EmployeeId">
+                ← Back to My Tickets
+            </a>
+        </div>
+
+        <div class="profile-summary">
+            <dl class="row mb-0">
+                <div class="col-sm-6 mb-3">
+                    <dt>Employee</dt>
+                    <dd>@Model.EmployeeName</dd>
+                </div>
+                <div class="col-sm-6 mb-3">
+                    <dt>Employee ID</dt>
+                    <dd>@Model.EmployeeId</dd>
+                </div>
+                <div class="col-sm-6 mb-3">
+                    <dt>Email</dt>
+                    <dd>@Model.EmployeeEmail</dd>
+                </div>
+                <div class="col-sm-6 mb-3">
+                    <dt>Department</dt>
+                    <dd>@Model.DepartmentName</dd>
+                </div>
+            </dl>
+        </div>
+
+        <form asp-action="CreateTicket" method="post" class="needs-validation" novalidate>
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="EmployeeId" />
+
+            <div class="mb-4">
+                <label asp-for="Title" class="form-label fw-semibold">Issue Title *</label>
+                <input asp-for="Title" class="form-control form-control-lg" placeholder="Give your issue a short title" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="Description" class="form-label fw-semibold">Describe the problem</label>
+                <textarea asp-for="Description" class="form-control" rows="5" placeholder="Include details like error messages, when it started, and any steps you've tried."></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center">
+                <small class="text-muted">Our service desk team will reach out if they need more detail.</small>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-dark-gradient">Submit Ticket</button>
+                    <a class="btn btn-outline-secondary" asp-action="Index" asp-route-employeeId="@Model.EmployeeId">Cancel</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function() {
+            'use strict';
+            var forms = document.querySelectorAll('.needs-validation');
+            Array.prototype.slice.call(forms).forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+    </script>
+}

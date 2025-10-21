@@ -8,12 +8,15 @@ namespace IncidentManagementsSystemNOSQL.Repositories
         User? GetByEmployeeId(string employeeId);
         User? GetById(string id);
         List<User> GetAll();
+        List<User> GetServiceDeskAgents();
 
         void SetPasswordHash(string id, string newPasswordHash);
 
         void AddUser(User user);
-        void UpdateUser(User user);
+        void UpdateUser(string id, User updated);
         void DeleteById(string id);
+
+        string GetNextEmployeeId();
         void EnsureIndexes();
     }
 }

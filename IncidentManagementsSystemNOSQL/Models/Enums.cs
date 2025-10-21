@@ -4,8 +4,8 @@
     {
         public enum UserRole
         {
-            employee,
-            service_desk
+            employee=0,
+            service_desk=1
         }
 
         public enum TicketStatus
@@ -23,6 +23,13 @@
             Finance,
             Operations,
             Marketing
+        }
+
+        public enum TicketPriority
+        {
+            Low,
+            Medium,
+            High
         }
 
     }

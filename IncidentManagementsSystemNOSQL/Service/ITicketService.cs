@@ -1,23 +1,26 @@
-﻿using IncidentManagementsSystemNOSQL.Models;
+﻿using System;
+using System.Collections.Generic;
+using IncidentManagementsSystemNOSQL.Models;
+
 namespace IncidentManagementsSystemNOSQL.Service
 {
     public interface ITicketService
     {
-        // READ Operations
         List<Ticket> GetAll();
         Ticket? GetById(string id);
         List<Ticket> GetByUserId(string userId);
-        List<Ticket> GetByStatus(string status);
+        List<Ticket> GetByStatus(Enums.TicketStatus status);
 
         List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate);
 
-        // MUTATION Operations
         void AddTicket(Ticket ticket);
         void UpdateTicket(string id, Ticket updatedTicket);
         void DeleteTicket(string id);
 
-        // AGGREGATION Operations
-        Dictionary<string, int> GetTicketCountsByStatus();
-        Dictionary<string, int> GetTicketCountsByDepartment();
+        Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus();
+        Dictionary<Enums.DepartmentType, int> GetTicketCountsByDepartment();
+        Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatusForEmployee(string employeeId);
+
+        string GetNextTicketId();
     }
 }

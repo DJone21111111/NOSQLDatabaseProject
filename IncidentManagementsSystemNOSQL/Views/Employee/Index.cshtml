@@ -1,0 +1,236 @@
+@model IncidentManagementsSystemNOSQL.Models.EmployeeDashboardViewModel
+@using IncidentManagementsSystemNOSQL.Models
+@using static IncidentManagementsSystemNOSQL.Models.Enums
+
+@{
+	var dashboard = Model ?? new EmployeeDashboardViewModel();
+	ViewData["Title"] = "My Tickets";
+	var hasEmployee = !string.IsNullOrWhiteSpace(dashboard.EmployeeId);
+	var pendingPercent = dashboard.PendingPercent;
+	var resolvedPercent = dashboard.ResolvedPercent;
+	var closedNoResolvePercent = dashboard.ClosedNoResolvePercent;
+}
+
+<style>
+	/* styles unchanged from your original */
+</style>
+
+<div class="container-fluid px-4 py-3">
+	@if (TempData["SuccessMessage"] != null)
+	{
+		<div class="alert alert-success alert-dismissible fade show" role="alert">
+			<strong>✅ Success!</strong> @TempData["SuccessMessage"]
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+	}
+	@if (TempData["ErrorMessage"] != null)
+	{
+		<div class="alert alert-danger alert-dismissible fade show" role="alert">
+			<strong>❌ Error!</strong> @TempData["ErrorMessage"]
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+	}
+
+	<div class="dashboard-header">
+		<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+			<div>
+				<h1 class="mb-2">🎟️ My Tickets</h1>
+				<p class="mb-0 opacity-75">Track progress on every issue you've reported.</p>
+			</div>
+			@if (hasEmployee)
+			{
+				<div class="profile-chip">
+					<span>👤 @dashboard.EmployeeName</span>
+					<span>💼 @dashboard.DepartmentName</span>
+					<span>🆔 @dashboard.EmployeeId</span>
+				</div>
+			}
+		</div>
+	</div>
+
+	@if (!hasEmployee)
+	{
+		<div class="empty-state bg-dark rounded-4">
+			<i class="bi bi-emoji-neutral"></i>
+			<h4>No employee profile selected</h4>
+			<p class="mb-0">Once your account is set up, you'll see your tickets and stats right here.</p>
+		</div>
+	}
+	else
+	{
+		<div class="row g-4 mb-4">
+			<div class="col-xl-4 col-md-6">
+				<div class="stat-card">
+					<div class="card-body text-white">
+						<div class="stat-icon">⏳</div>
+						<div class="stat-label">Open / In Progress</div>
+						<h2 class="stat-number">@dashboard.PendingCount</h2>
+						<p class="mb-0">@pendingPercent.ToString("0.0")%</p>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-4 col-md-6">
+				<div class="stat-card">
+					<div class="card-body text-white">
+						<div class="stat-icon">✅</div>
+						<div class="stat-label">Resolved Tickets</div>
+						<h2 class="stat-number">@dashboard.ClosedResolvedCount</h2>
+						<p class="mb-0">@resolvedPercent.ToString("0.0")%</p>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-4 col-md-6">
+				<div class="stat-card">
+					<div class="card-body text-white">
+						<div class="stat-icon">⚠️</div>
+						<div class="stat-label">Closed Without Resolve</div>
+						<h2 class="stat-number">@dashboard.ClosedNoResolveCount</h2>
+						<p class="mb-0">@closedNoResolvePercent.ToString("0.0")%</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+			<div>
+				<h4 class="mb-1">📋 Tickets You've Reported</h4>
+				<small class="text-muted">Total tickets: @dashboard.TotalTickets</small>
+			</div>
+			<div>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-dark-gradient" asp-action="CreateTicket" asp-route-employeeId="@dashboard.EmployeeId">
+						✍️ Report an Issue
+					</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="tickets-card card">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h4 class="mb-0">My Ticket History</h4>
+				<span class="badge bg-primary">@dashboard.TotalTickets total</span>
+			</div>
+			<div class="card-body p-0">
+				@if (dashboard.Tickets != null && dashboard.Tickets.Any())
+				{
+					<div class="table-responsive">
+						<table class="table table-hover mb-0">
+							<thead>
+								<tr>
+									<th style="width: 120px;">Ticket ID</th>
+									<th>Title</th>
+									<th style="width: 160px;">Status</th>
+									<th style="width: 170px;">Assigned To</th>
+									<th style="width: 160px;">Created</th>
+									<th style="width: 160px;">Last Updated</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (var ticket in dashboard.Tickets.OrderByDescending(t => t.DateCreated))
+								{
+									<tr>
+										<td><strong class="text-primary">@ticket.TicketId</strong></td>
+										<td>
+											<div class="d-flex flex-column">
+												<span class="fw-bold">@ticket.Title</span>
+												@if (!string.IsNullOrEmpty(ticket.Description))
+												{
+													var summary = ticket.Description.Length > 80 ? ticket.Description.Substring(0, 80) + "..." : ticket.Description;
+													<small class="text-muted">@summary</small>
+												}
+											</div>
+										</td>
+										<td>
+											@if (ticket.Status == TicketStatus.open)
+											{
+												<span class="badge-status status-open-pill">
+													<span class="status-dot"></span>
+													Open
+												</span>
+											}
+											else if (ticket.Status == TicketStatus.in_progress)
+											{
+												<span class="badge-status status-progress-pill">
+													<span class="status-dot"></span>
+													In Progress
+												</span>
+											}
+											else if (ticket.Status == TicketStatus.closed_resolved)
+											{
+												<span class="badge-status status-closed-resolved-pill">
+													<span class="status-dot"></span>
+													Closed - Resolved
+												</span>
+											}
+											else if (ticket.Status == TicketStatus.closed_no_resolve)
+											{
+												<span class="badge-status status-closed-no-pill">
+													<span class="status-dot"></span>
+													Closed - Not Resolved
+												</span>
+											}
+											else
+											{
+												<span class="badge-status">
+													<span class="status-dot"></span>
+													@ticket.Status
+												</span>
+											}
+										</td>
+										<td>
+											@if (ticket.AssignedTo != null)
+											{
+												<span class="badge-status">
+													<span class="status-dot"></span>
+													@ticket.AssignedTo.Name
+												</span>
+											}
+											else
+											{
+												<span class="badge-status status-closed-no-pill">
+													<span class="status-dot"></span>
+													Not yet assigned
+												</span>
+											}
+										</td>
+										<td>
+											<small>@ticket.DateCreated.ToLocalTime().ToString("MMM dd, yyyy")</small><br />
+											<small class="text-muted">@ticket.DateCreated.ToLocalTime().ToString("HH:mm")</small>
+										</td>
+										<td>
+											@if (ticket.DateClosed.HasValue)
+											{
+												<small>@ticket.DateClosed.Value.ToLocalTime().ToString("MMM dd, yyyy")</small>
+
+												<br />
+												<small class="text-muted">@ticket.DateClosed.Value.ToLocalTime().ToString("HH:mm")</small>
+											}
+											else
+											{
+												<small class="text-muted">Still active</small>
+											}
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+				else
+				{
+					<div class="empty-state">
+						<i class="bi bi-inbox"></i>
+						<h5>No tickets yet</h5>
+						<p class="mb-0">Start by reporting an issue so the service desk can help you.</p>
+					</div>
+				}
+			</div>
+		</div>
+	}
+</div>
+
+@section Scripts {
+	@{
+		await Html.RenderPartialAsync("_ValidationScriptsPartial");
+	}
+}

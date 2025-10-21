@@ -1,22 +1,26 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Repositories;
+
 namespace IncidentManagementsSystemNOSQL.Service
 {
     public class TicketService : ITicketService
     {
         private readonly ITicketRepository _ticketRepository;
+        private readonly IUserService _userService;
 
-        public TicketService(ITicketRepository ticketRepository)
+        public TicketService(ITicketRepository ticketRepository, IUserService userService)
         {
             _ticketRepository = ticketRepository;
+            _userService = userService;
         }
-
 
         public List<Ticket> GetAll()
         {
             try
             {
-                return _ticketRepository.GetAll();
+                var tickets = _ticketRepository.GetAll();
+                BackfillAssignmentsIfNeeded(tickets);
+                return tickets;
             }
             catch (Exception ex)
             {
@@ -28,7 +32,13 @@ namespace IncidentManagementsSystemNOSQL.Service
         {
             try
             {
-                return _ticketRepository.GetById(id);
+                var ticket = _ticketRepository.GetById(id);
+                if (ticket != null)
+                {
+                    BackfillAssignmentsIfNeeded(new List<Ticket> { ticket });
+                }
+
+                return ticket;
             }
             catch (Exception ex)
             {
@@ -40,7 +50,9 @@ namespace IncidentManagementsSystemNOSQL.Service
         {
             try
             {
-                return _ticketRepository.GetByUserId(userId);
+                var tickets = _ticketRepository.GetByUserId(userId);
+                BackfillAssignmentsIfNeeded(tickets);
+                return tickets;
             }
             catch (Exception ex)
             {
@@ -48,11 +60,13 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public List<Ticket> GetByStatus(string status)
+        public List<Ticket> GetByStatus(Enums.TicketStatus status)
         {
             try
             {
-                return _ticketRepository.GetByStatus(status);
+                var tickets = _ticketRepository.GetByStatus(status);
+                BackfillAssignmentsIfNeeded(tickets);
+                return tickets;
             }
             catch (Exception ex)
             {
@@ -60,12 +74,13 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-
         public List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate)
         {
             try
             {
-                return _ticketRepository.GetByDateRange(startDate, endDate);
+                var tickets = _ticketRepository.GetByDateRange(startDate, endDate);
+                BackfillAssignmentsIfNeeded(tickets);
+                return tickets;
             }
             catch (Exception ex)
             {
@@ -73,13 +88,19 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-
         public void AddTicket(Ticket ticket)
         {
             try
             {
                 ticket.DateCreated = DateTime.UtcNow;
-                ticket.Status = "open";
+                ticket.Status = Enums.TicketStatus.open;
+
+                if (string.IsNullOrWhiteSpace(ticket.TicketId))
+                {
+                    ticket.TicketId = GetNextTicketId();
+                }
+
+                EnsureAssignedAgent(ticket);
 
                 _ticketRepository.AddTicket(ticket);
             }
@@ -95,12 +116,18 @@ namespace IncidentManagementsSystemNOSQL.Service
 
             try
             {
-                if (updatedTicket.Status == "closed_resolved" || updatedTicket.Status == "closed_no_resolve")
+                if (updatedTicket.Status == Enums.TicketStatus.closed_resolved || updatedTicket.Status == Enums.TicketStatus.closed_no_resolve)
                 {
                     updatedTicket.DateClosed = DateTime.UtcNow;
                 }
+                else if (updatedTicket.Status == Enums.TicketStatus.open || updatedTicket.Status == Enums.TicketStatus.in_progress)
+                {
+                    updatedTicket.DateClosed = null;
+                }
 
-                _ticketRepository.UpdateTicket(id,updatedTicket);
+                EnsureAssignedAgent(updatedTicket);
+
+                _ticketRepository.UpdateTicket(id, updatedTicket);
             }
             catch (Exception ex)
             {
@@ -120,8 +147,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-
-        public Dictionary<string, int> GetTicketCountsByStatus()
+        public Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus()
         {
             try
             {
@@ -133,7 +159,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
-        public Dictionary<string, int> GetTicketCountsByDepartment()
+        public Dictionary<Enums.DepartmentType, int> GetTicketCountsByDepartment()
         {
             try
             {
@@ -142,6 +168,100 @@ namespace IncidentManagementsSystemNOSQL.Service
             catch (Exception ex)
             {
                 throw new Exception("Error while retrieving ticket counts by department.", ex);
+            }
+        }
+
+        public Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatusForEmployee(string employeeId)
+        {
+            try
+            {
+                return _ticketRepository.GetTicketCountsByStatusForEmployee(employeeId);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error while retrieving ticket counts for employee {employeeId}.", ex);
+            }
+        }
+
+        public string GetNextTicketId()
+        {
+            try
+            {
+                return _ticketRepository.GetNextTicketId();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while generating the next ticket ID.", ex);
+            }
+        }
+
+        private void EnsureAssignedAgent(Ticket ticket)
+        {
+            if (ticket.AssignedTo != null)
+            {
+                return;
+            }
+
+            var agents = _userService.GetServiceDeskAgents();
+            if (agents == null || agents.Count == 0)
+            {
+                throw new InvalidOperationException("No service desk agents are available to handle tickets.");
+            }
+
+            var agent = SelectNextServiceDeskAgent(agents);
+            ticket.AssignedTo = agent;
+        }
+
+        private CommentAuthorEmbedded SelectNextServiceDeskAgent(List<User> agents)
+        {
+            if (agents.Count == 1)
+            {
+                return MapAgent(agents[0]);
+            }
+
+            var index = _ticketRepository.GetNextServiceDeskAgentIndex(agents.Count);
+            var agent = agents[index];
+            return MapAgent(agent);
+        }
+
+        private static CommentAuthorEmbedded MapAgent(User agent)
+        {
+            return new CommentAuthorEmbedded
+            {
+                EmployeeId = agent.EmployeeId,
+                Name = agent.Name,
+                Email = agent.Email,
+                Role = agent.Role.ToString()
+            };
+        }
+
+        private void BackfillAssignmentsIfNeeded(List<Ticket> tickets)
+        {
+            if (tickets == null || tickets.Count == 0)
+            {
+                return;
+            }
+
+            var missingAssignments = tickets.Where(t => t.AssignedTo == null).ToList();
+            if (missingAssignments.Count == 0)
+            {
+                return;
+            }
+
+            var agents = _userService.GetServiceDeskAgents();
+            if (agents == null || agents.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var ticket in missingAssignments)
+            {
+                var agent = SelectNextServiceDeskAgent(agents);
+                ticket.AssignedTo = agent;
+                if (!string.IsNullOrWhiteSpace(ticket.Id))
+                {
+                    _ticketRepository.SetAssignedAgent(ticket.Id, agent);
+                }
             }
         }
     }

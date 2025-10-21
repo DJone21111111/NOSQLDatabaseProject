@@ -1,175 +1,201 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using MongoDB.Driver;
+using static IncidentManagementsSystemNOSQL.Models.Enums;
 
 namespace IncidentManagementsSystemNOSQL.Repositories
 {
     public class TicketRepository : ITicketRepository
     {
         private readonly IMongoCollection<Ticket> _tickets;
+        private readonly IMongoCollection<Counter> _counters;
+        private const string TicketCounterId = "ticket-sequence";
+        private const string ServiceDeskRotationCounterId = "service-desk-rotation";
 
         public TicketRepository(IMongoDatabase db)
         {
             _tickets = db.GetCollection<Ticket>("tickets");
+            _counters = db.GetCollection<Counter>("counters");
         }
 
         public Ticket? GetById(string id)
         {
-            try
-            {
-                return _tickets.Find(t => t.Id == id).FirstOrDefault();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error while retrieving ticket with id '{id}'", ex);
-            }
+            return _tickets.Find(t => t.Id == id).FirstOrDefault();
         }
 
         public List<Ticket> GetByUserId(string userId)
         {
-            try
-            {
-                return _tickets.Find(t => t.Employee.EmployeeId == userId).ToList();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error while retrieving tickets for user '{userId}'", ex);
-            }
+            return _tickets.Find(t => t.Employee.EmployeeId == userId).ToList();
         }
 
         public List<Ticket> GetAll()
         {
-            try
-            {
-                return _tickets.Find(FilterDefinition<Ticket>.Empty)
-                                 .SortByDescending(t => t.DateCreated)
-                                 .ToList();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error while retrieving all tickets", ex);
-            }
+            return _tickets.Find(FilterDefinition<Ticket>.Empty)
+                           .SortByDescending(t => t.DateCreated)
+                           .ToList();
         }
 
-        public List<Ticket> GetByStatus(string status)
+        public List<Ticket> GetByStatus(TicketStatus status)
         {
-            try
-            {
-                return _tickets.Find(t => t.Status == status).ToList();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error while retrieving tickets with status '{status}'", ex);
-            }
+            return _tickets.Find(t => t.Status == status).ToList();
         }
 
         public List<Ticket> GetByDateRange(DateTime startDate, DateTime endDate)
         {
-            try
-            {
-                // Filters for tickets created between the start and end dates (inclusive)
-                return _tickets.Find(t => t.DateCreated >= startDate && t.DateCreated <= endDate)
-                                 .ToList();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error while retrieving tickets by date range", ex);
-            }
+            return _tickets.Find(t => t.DateCreated >= startDate && t.DateCreated <= endDate).ToList();
         }
 
         public void AddTicket(Ticket ticket)
         {
-            try
-            {
-                _tickets.InsertOne(ticket);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error while adding new ticket", ex);
-            }
+            _tickets.InsertOne(ticket);
         }
 
         public void UpdateTicket(string id, Ticket updated)
         {
-            try
-            {
-                _tickets.ReplaceOne(t => t.Id == id, updated);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error while updating ticket '{id}'", ex);
-            }
+            _tickets.ReplaceOne(t => t.Id == id, updated);
         }
 
         public void DeleteById(string id)
         {
-            try
-            {
-                _tickets.DeleteOne(t => t.Id == id);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error while deleting ticket with id '{id}'", ex);
-            }
+            _tickets.DeleteOne(t => t.Id == id);
         }
 
-        public Dictionary<string, int> GetTicketCountsByStatus()
+        public Dictionary<Enums.TicketStatus, int> GetTicketCountsByStatus()
         {
-            try
-            {
-                var results = _tickets.Aggregate()
-                    .Group(t => t.Status, g => new { Status = g.Key, Count = g.Count() })
-                    .ToList();
+            var allTickets = GetAll(); 
 
-                return results.ToDictionary(r => r.Status, r => r.Count);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error while aggregating tickets by status", ex);
-            }
+            var groupedCounts = allTickets
+                .GroupBy(t => t.Status)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            return groupedCounts;
         }
 
-        public Dictionary<string, int> GetTicketCountsByDepartment()
+
+        public Dictionary<DepartmentType, int> GetTicketCountsByDepartment()
         {
-            try
-            {
-                var results = _tickets.Aggregate()
-                    .Group(t => t.Employee.Department.Name, g => new { Department = g.Key, Count = g.Count() })
-                    .ToList();
+            var results = _tickets.Aggregate()
+                .Group(t => t.Employee.Department.Name, g => new { Department = g.Key, Count = g.Count() })
+                .ToList();
 
-                return results.ToDictionary(r => r.Department, r => r.Count);
-            }
-            catch (Exception ex)
+            var dict = new Dictionary<DepartmentType, int>();
+            foreach (var r in results)
             {
-                throw new Exception("Error while aggregating tickets by department", ex);
+                if (!string.IsNullOrWhiteSpace(r.Department) &&
+                    Enum.TryParse<DepartmentType>(r.Department, true, out var dept))
+                {
+                    dict[dept] = r.Count;
+                }
             }
+            return dict;
         }
 
-        // Makes query faster and ensures uniqueness
+        public Dictionary<TicketStatus, int> GetTicketCountsByStatusForEmployee(string employeeId)
+        {
+            var filter = Builders<Ticket>.Filter.Eq(t => t.Employee.EmployeeId, employeeId);
+            var results = _tickets.Aggregate()
+                .Match(filter)
+                .Group(t => t.Status, g => new { Status = g.Key, Count = g.Count() })
+                .ToList();
+
+            return results.ToDictionary(r => r.Status, r => r.Count);
+        }
+
+        public string GetNextTicketId()
+        {
+            var counterFilter = Builders<Counter>.Filter.Eq(c => c.Id, TicketCounterId);
+            var update = Builders<Counter>.Update.Inc(c => c.SequenceValue, 1);
+            var options = new FindOneAndUpdateOptions<Counter>
+            {
+                ReturnDocument = ReturnDocument.After
+            };
+
+            var counter = _counters.FindOneAndUpdate(counterFilter, update, options);
+            if (counter == null)
+            {
+                var seedValue = DetermineTicketSeedValue() + 1;
+                var newCounter = new Counter
+                {
+                    Id = TicketCounterId,
+                    SequenceValue = seedValue
+                };
+                _counters.InsertOne(newCounter);
+                return FormatTicketId(seedValue);
+            }
+            return FormatTicketId(counter.SequenceValue);
+        }
+
+        public int GetNextServiceDeskAgentIndex(int agentCount)
+        {
+            var counterFilter = Builders<Counter>.Filter.Eq(c => c.Id, ServiceDeskRotationCounterId);
+            var update = Builders<Counter>.Update.Inc(c => c.SequenceValue, 1);
+            var options = new FindOneAndUpdateOptions<Counter>
+            {
+                ReturnDocument = ReturnDocument.After,
+                IsUpsert = true
+            };
+
+            var counter = _counters.FindOneAndUpdate(counterFilter, update, options);
+            return (int)(counter.SequenceValue % agentCount);
+        }
+
+        public void SetAssignedAgent(string ticketId, CommentAuthorEmbedded agent)
+        {
+            var filter = Builders<Ticket>.Filter.Eq(t => t.Id, ticketId);
+            var update = Builders<Ticket>.Update.Set(t => t.AssignedTo, agent);
+            _tickets.UpdateOne(filter, update);
+        }
+
+        private long DetermineTicketSeedValue()
+        {
+            const long defaultSeed = 1000;
+            var ticketIds = _tickets.Find(FilterDefinition<Ticket>.Empty)
+                .Project(t => t.TicketId)
+                .ToList();
+
+            if (ticketIds.Count == 0)
+                return defaultSeed;
+
+            var maxValue = defaultSeed;
+            foreach (var ticketId in ticketIds)
+            {
+                if (TryParseTicketNumber(ticketId, out var parsed) && parsed > maxValue)
+                    maxValue = parsed;
+            }
+
+            return maxValue;
+        }
+
+        private static bool TryParseTicketNumber(string ticketId, out long number)
+        {
+            number = 0;
+            if (string.IsNullOrWhiteSpace(ticketId))
+                return false;
+
+            var numericPart = new string(ticketId.Where(char.IsDigit).ToArray());
+            return long.TryParse(numericPart, out number);
+        }
+
+        private static string FormatTicketId(long number) => $"INC-{number:D4}";
+
         public void EnsureIndexes()
         {
-            try
+            var models = new[]
             {
-                var models = new[]
-                {
-                    new CreateIndexModel<Ticket>(
-                        Builders<Ticket>.IndexKeys.Ascending(t => t.Status),
-                        new CreateIndexOptions { Name = "ix_status" }),
+                new CreateIndexModel<Ticket>(
+                    Builders<Ticket>.IndexKeys.Ascending(t => t.TicketId),
+                    new CreateIndexOptions { Unique = true, Name = "ux_ticketId" }),
+                new CreateIndexModel<Ticket>(
+                    Builders<Ticket>.IndexKeys.Ascending(t => t.Status),
+                    new CreateIndexOptions { Name = "ix_status" }),
+                new CreateIndexModel<Ticket>(
+                    Builders<Ticket>.IndexKeys.Ascending("Employee.EmployeeId"),
+                    new CreateIndexOptions { Name = "ix_employeeId" }),
+                new CreateIndexModel<Ticket>(
+                    Builders<Ticket>.IndexKeys.Descending(t => t.DateCreated),
+                    new CreateIndexOptions { Name = "ix_createdAt" })
+            };
 
-                    new CreateIndexModel<Ticket>(
-                        Builders<Ticket>.IndexKeys.Ascending("Employee.EmployeeId"),
-                        new CreateIndexOptions { Name = "ix_employeeId" }),
-
-                    new CreateIndexModel<Ticket>(
-                        Builders<Ticket>.IndexKeys.Descending(t => t.DateCreated),
-                        new CreateIndexOptions { Name = "ix_createdAt" })
-                };
-
-                _tickets.Indexes.CreateManyAsync(models).Wait();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Error while ensuring indexes for tickets collection", ex);
-            }
+            _tickets.Indexes.CreateMany(models);
         }
     }
 }

@@ -60,13 +60,24 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
+        public List<User> GetServiceDeskAgents()
+        {
+            try
+            {
+                return _userRepository.GetServiceDeskAgents();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while retrieving service desk agents.", ex);
+            }
+        }
+
         public void AddUser(User user)
         {
             try
             {
                 user.CreatedAt = DateTime.UtcNow;
                 user.UpdatedAt = DateTime.UtcNow;
-
                 _userRepository.AddUser(user);
             }
             catch (Exception ex)
@@ -75,14 +86,18 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
+        public void SetPassword(string userId, string newPasswordHash)
+        {
+            _userRepository.SetPasswordHash(userId, newPasswordHash);
+        }
+
         public void UpdateUser(string id, User updatedUser)
         {
             try
             {
                 updatedUser.Id = id;
                 updatedUser.UpdatedAt = DateTime.UtcNow;
-
-                _userRepository.UpdateUser(updatedUser);
+                _userRepository.UpdateUser(id, updatedUser);
             }
             catch (Exception ex)
             {
@@ -99,6 +114,18 @@ namespace IncidentManagementsSystemNOSQL.Service
             catch (Exception ex)
             {
                 throw new Exception($"An error occurred while deleting user {id}.", ex);
+            }
+        }
+
+        public string GetNextEmployeeId()
+        {
+            try
+            {
+                return _userRepository.GetNextEmployeeId();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while generating the next employee ID.", ex);
             }
         }
     }
