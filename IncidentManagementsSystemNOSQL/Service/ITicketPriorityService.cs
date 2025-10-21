@@ -9,10 +9,10 @@ namespace IncidentManagementsSystemNOSQL.Service
         public interface ITicketPriorityService
         {
             // Returns a filter for a specific priority
-            FilterDefinition<Ticket> BuildPriorityFilter(Enums.PriorityLevel priority);
+            FilterDefinition<Ticket> BuildPriorityFilter(Enums.TicketPriority priority);
 
-            // Helper: parse "critical"/"Critical"/"HIGH" → PriorityLevel
-            bool TryParsePriority(string? input, out Enums.PriorityLevel priority);
+            // Helper: parse "critical"/"Critical"/"HIGH" → TicketPriority
+            bool TryParsePriority(string? input, out Enums.TicketPriority priority);
 
         }
     }

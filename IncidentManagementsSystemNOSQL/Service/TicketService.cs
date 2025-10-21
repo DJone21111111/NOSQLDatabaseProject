@@ -28,6 +28,60 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
         }
 
+        public List<Ticket> GetAllSortedByPriority(bool descending = true)
+        {
+            try
+            {
+                var tickets = _ticketRepository.GetAll();
+                BackfillAssignmentsIfNeeded(tickets);
+
+                // Define priority order: High > Medium > Low
+                var priorityOrder = new Dictionary<Enums.TicketPriority, int>
+                {
+                    { Enums.TicketPriority.High, 3 },
+                    { Enums.TicketPriority.Medium, 2 },
+                    { Enums.TicketPriority.Low, 1 }
+                };
+
+                if (descending)
+                {
+                    // High to Low priority
+                    return tickets.OrderByDescending(t => t.Priority.HasValue ? priorityOrder[t.Priority.Value] : 0)
+                                  .ThenBy(t => t.DateCreated)
+                                  .ToList();
+                }
+                else
+                {
+                    // Low to High priority
+                    return tickets.OrderBy(t => t.Priority.HasValue ? priorityOrder[t.Priority.Value] : 0)
+                                  .ThenBy(t => t.DateCreated)
+                                  .ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error while retrieving and sorting tickets by priority.", ex);
+            }
+        }
+
+        public List<Ticket> GetByPriority(Enums.TicketPriority priority)
+        {
+            try
+            {
+                var tickets = _ticketRepository.GetAll();
+                BackfillAssignmentsIfNeeded(tickets);
+
+                // Filter tickets by the specified priority
+                return tickets.Where(t => t.Priority.HasValue && t.Priority.Value == priority)
+                              .OrderBy(t => t.DateCreated)
+                              .ToList();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error while retrieving tickets with priority '{priority}'.", ex);
+            }
+        }
+
         public Ticket? GetById(string id)
         {
             try

@@ -75,17 +75,19 @@
 
     <div class="row g-4 mb-4">
         <div class="col-xl-3 col-md-6">
-            <div class="stat-card status-total">
-                <div class="card-body text-white">
-                    <div class="stat-icon">📊</div>
-                    <div class="stat-label">Total Tickets</div>
-                    <h2 class="stat-number">@ViewBag.TotalTickets</h2>
-                    @if (hasAgentContext)
-                    {
-                        <small class="d-block text-white-50">Assigned to you: @agentTicketCount</small>
-                    }
+            <a href="@Url.Action("Index", "Ticket")" class="text-decoration-none">
+                <div class="stat-card status-total">
+                    <div class="card-body text-white">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-label">Total Tickets</div>
+                        <h2 class="stat-number">@ViewBag.TotalTickets</h2>
+                        @if (hasAgentContext)
+                        {
+                            <small class="d-block text-white-50">Assigned to you: @agentTicketCount</small>
+                        }
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-xl-3 col-md-6">
             <div class="stat-card status-open">

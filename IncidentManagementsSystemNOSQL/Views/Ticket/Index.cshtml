@@ -1,17 +1,364 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@{
-    <form method="get" class="mb-3">
-        <label for="priority">Priority:</label>
-        <select id="priority" name="priority" onchange="this.form.submit()">
-            <option value="">All</option>
-            <option value="Critical" selected="@(ViewBag.Priority == "Critical")">Critical</option>
-            <option value="High" selected="@(ViewBag.Priority == "High")">High</option>
-            <option value="Normal" selected="@(ViewBag.Priority == "Normal")">Normal</option>
-            <option value="Low" selected="@(ViewBag.Priority == "Low")">Low</option>
-        </select>
-        <noscript><button type="submit">Apply</button></noscript>
-    </form>
+﻿@model IEnumerable<IncidentManagementsSystemNOSQL.Models.Ticket>
+@using IncidentManagementsSystemNOSQL.Models
+@using static IncidentManagementsSystemNOSQL.Models.Enums
 
+@{
+    ViewData["Title"] = "All Tickets";
+    var selectedPriority = ViewBag.SelectedPriority as string ?? "all";
+
+    var lowCount = Model?.Count(t => t.Priority.HasValue && t.Priority.Value == TicketPriority.Low) ?? 0;
+    var mediumCount = Model?.Count(t => t.Priority.HasValue && t.Priority.Value == TicketPriority.Medium) ?? 0;
+    var highCount = Model?.Count(t => t.Priority.HasValue && t.Priority.Value == TicketPriority.High) ?? 0;
+    var totalCount = Model?.Count() ?? 0;
 }
+
+<style>
+    .stat-card {
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        overflow: hidden;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    .stat-card .card-body {
+        padding: 1.5rem;
+    }
+    .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    .stat-label {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    .priority-low { background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%); }
+    .priority-medium { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); }
+    .priority-high { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+    .priority-all { background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); }
+
+    .tickets-card {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .tickets-card .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.25rem;
+        border-radius: 12px 12px 0 0;
+        font-weight: 600;
+    }
+    .badge-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.85rem;
+        border-radius: 20px;
+        font-size: 0.813rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .status-open-pill { background-color: #d1ecf1; color: #0c5460; }
+    .status-open-pill .status-dot { background-color: #17a2b8; }
+    .status-progress-pill { background-color: #cce5ff; color: #004085; }
+    .status-progress-pill .status-dot { background-color: #007bff; }
+    .status-closed-resolved-pill { background-color: #d4edda; color: #155724; }
+    .status-closed-resolved-pill .status-dot { background-color: #28a745; }
+    .status-closed-no-pill { background-color: #f8d7da; color: #721c24; }
+    .status-closed-no-pill .status-dot { background-color: #dc3545; }
+
+    .priority-badge-high { background-color: #f8d7da; color: #721c24; font-weight: 600; }
+    .priority-badge-medium { background-color: #fff3cd; color: #856404; font-weight: 600; }
+    .priority-badge-low { background-color: #e2e3e5; color: #383d41; font-weight: 600; }
+
+    .btn-action {
+        border-radius: 6px;
+        font-size: 0.813rem;
+        font-weight: 500;
+        padding: 0.375rem 0.75rem;
+        transition: all 0.2s;
+    }
+    .btn-edit {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border: none;
+    }
+    .btn-edit:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+        color: white;
+    }
+    .btn-view {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        border: none;
+    }
+    .btn-view:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
+        color: white;
+    }
+    .dashboard-header {
+        margin-bottom: 2rem;
+    }
+    .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 2rem;
+    }
+</style>
+
+<div class="container-fluid px-4 py-3">
+    <div class="dashboard-header">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h1 class="mb-2">🎫 All Tickets</h1>
+                <p class="mb-0 opacity-75">View and manage all tickets by priority level</p>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <a href="@Url.Action("Index", new { priority = "" })" class="text-decoration-none">
+                <div class="stat-card priority-all">
+                    <div class="card-body text-white">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-label">All Tickets</div>
+                        <h2 class="stat-number">@totalCount</h2>
+                        <p class="mb-0 small">View all priorities</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <a href="@Url.Action("Index", new { priority = "High" })" class="text-decoration-none">
+                <div class="stat-card priority-high">
+                    <div class="card-body text-white">
+                        <div class="stat-icon">🔴</div>
+                        <div class="stat-label">High Priority</div>
+                        <h2 class="stat-number">@highCount</h2>
+                        <p class="mb-0 small">Urgent tickets</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <a href="@Url.Action("Index", new { priority = "Medium" })" class="text-decoration-none">
+                <div class="stat-card priority-medium">
+                    <div class="card-body text-white">
+                        <div class="stat-icon">🟡</div>
+                        <div class="stat-label">Medium Priority</div>
+                        <h2 class="stat-number">@mediumCount</h2>
+                        <p class="mb-0 small">Standard tickets</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <a href="@Url.Action("Index", new { priority = "Low" })" class="text-decoration-none">
+                <div class="stat-card priority-low">
+                    <div class="card-body text-white">
+                        <div class="stat-icon">⚪</div>
+                        <div class="stat-label">Low Priority</div>
+                        <h2 class="stat-number">@lowCount</h2>
+                        <p class="mb-0 small">Non-urgent tickets</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <form method="get" class="row align-items-center g-3">
+            <div class="col-lg-4 col-md-6">
+                <label for="priority" class="form-label fw-bold mb-2">🎯 Filter by Priority Level:</label>
+                <select id="priority" name="priority" class="form-select" onchange="this.form.submit()">
+                    <option value="" selected="@(selectedPriority == "all")">🔵 All Priorities</option>
+                    <option value="Low" selected="@(selectedPriority.Equals("Low", StringComparison.OrdinalIgnoreCase))">⚪ Low Priority</option>
+                    <option value="Medium" selected="@(selectedPriority.Equals("Medium", StringComparison.OrdinalIgnoreCase))">🟡 Medium Priority</option>
+                    <option value="High" selected="@(selectedPriority.Equals("High", StringComparison.OrdinalIgnoreCase))">🔴 High Priority</option>
+                </select>
+            </div>
+            <noscript>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Apply Filter</button>
+                </div>
+            </noscript>
+        </form>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="tickets-card card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">📋 Ticket List</h4>
+                    <span class="badge bg-light text-dark" id="ticketCount">
+                        @(Model?.Count() ?? 0) Ticket@(Model?.Count() == 1 ? "" : "s")
+                    </span>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model != null && Model.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="ticketsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 120px;">Ticket ID</th>
+                                        <th>Title</th>
+                                        <th style="width: 140px;">Priority</th>
+                                        <th style="width: 160px;">Status</th>
+                                        <th style="width: 160px;">Created</th>
+                                        <th style="width: 150px;">Assigned To</th>
+                                        <th style="width: 150px;" class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ticket in Model)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong class="text-primary">@ticket.TicketId</strong>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span class="fw-bold">@ticket.Title</span>
+                                                    @if (!string.IsNullOrEmpty(ticket.Description) && ticket.Description.Length > 50)
+                                                    {
+                                                        <small class="text-muted">@ticket.Description.Substring(0, 50)...</small>
+                                                    }
+                                                    else if (!string.IsNullOrEmpty(ticket.Description))
+                                                    {
+                                                        <small class="text-muted">@ticket.Description</small>
+                                                    }
+                                                </div>
+                                            </td>
+                                            <td>
+                                                @if (ticket.Priority.HasValue)
+                                                {
+                                                    if (ticket.Priority.Value == TicketPriority.High)
+                                                    {
+                                                        <span class="badge priority-badge-high px-3 py-2">🔴 High</span>
+                                                    }
+                                                    else if (ticket.Priority.Value == TicketPriority.Medium)
+                                                    {
+                                                        <span class="badge priority-badge-medium px-3 py-2">🟡 Medium</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge priority-badge-low px-3 py-2">⚪ Low</span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary px-3 py-2">Not Set</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (ticket.Status == TicketStatus.open)
+                                                {
+                                                    <span class="badge-status status-open-pill">
+                                                        <span class="status-dot"></span>
+                                                        Open
+                                                    </span>
+                                                }
+                                                else if (ticket.Status == TicketStatus.in_progress)
+                                                {
+                                                    <span class="badge-status status-progress-pill">
+                                                        <span class="status-dot"></span>
+                                                        In Progress
+                                                    </span>
+                                                }
+                                                else if (ticket.Status == TicketStatus.closed_resolved)
+                                                {
+                                                    <span class="badge-status status-closed-resolved-pill">
+                                                        <span class="status-dot"></span>
+                                                        Resolved
+                                                    </span>
+                                                }
+                                                else if (ticket.Status == TicketStatus.closed_no_resolve)
+                                                {
+                                                    <span class="badge-status status-closed-no-pill">
+                                                        <span class="status-dot"></span>
+                                                        Unresolved
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <small>@ticket.DateCreated.ToLocalTime().ToString("MMM dd, yyyy")</small><br />
+                                                <small class="text-muted">@ticket.DateCreated.ToLocalTime().ToString("HH:mm")</small>
+                                            </td>
+                                            <td>
+                                                @if (ticket.AssignedTo != null)
+                                                {
+                                                    <span class="badge bg-info text-dark">👤 @ticket.AssignedTo.Name</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">⚠️ Unassigned</span>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group" role="group">
+                                                    <a href="@Url.Action("Details", new { id = ticket.Id })"
+                                                       class="btn btn-sm btn-action btn-view"
+                                                       title="View Details">
+                                                        👁️ View
+                                                    </a>
+                                                    <a href="@Url.Action("Edit", new { id = ticket.Id })"
+                                                       class="btn btn-sm btn-action btn-edit"
+                                                       title="Edit Ticket">
+                                                        ✏️ Edit
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-5 text-center">
+                            <div class="mb-3" style="font-size: 4rem;">📭</div>
+                            <h5 class="text-muted">No tickets found</h5>
+                            @if (selectedPriority != "all")
+                            {
+                                <p class="text-muted">No tickets with @selectedPriority priority at this time.</p>
+                                <a href="@Url.Action("Index")" class="btn btn-primary">View All Tickets</a>
+                            }
+                            else
+                            {
+                                <p class="text-muted">Create your first ticket to get started!</p>
+                                <a href="@Url.Action("Create")" class="btn btn-success">➕ Create New Ticket</a>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

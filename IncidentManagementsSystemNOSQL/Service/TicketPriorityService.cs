@@ -15,14 +15,14 @@ namespace IncidentManagementsSystemNOSQL.Service
             _ticketRepository = ticketRepository;
         }
 
-        public FilterDefinition<Ticket> BuildPriorityFilter(Enums.PriorityLevel priority)
+        public FilterDefinition<Ticket> BuildPriorityFilter(Enums.TicketPriority priority)
         {
             var filter = Builders<Ticket>.Filter;
             return filter.Eq("priority", priority.ToString().ToLower());
         }
 
 
-        public bool TryParsePriority(string? input, out Enums.PriorityLevel priority)
+        public bool TryParsePriority(string? input, out Enums.TicketPriority priority)
         {
             if (string.IsNullOrWhiteSpace(input))
             {
@@ -31,7 +31,7 @@ namespace IncidentManagementsSystemNOSQL.Service
             }
 
             // Accepts case-insensitive names: "critical", "High", etc.
-            if (Enum.TryParse<Enums.PriorityLevel>(input, ignoreCase: true, out var parsed))
+            if (Enum.TryParse<Enums.TicketPriority>(input, ignoreCase: true, out var parsed))
             {
                 priority = parsed;
                 return true;
@@ -39,9 +39,9 @@ namespace IncidentManagementsSystemNOSQL.Service
 
             // Accept numeric values if your enum is 0..N (optional)
             if (int.TryParse(input, out var num) &&
-                Enum.IsDefined(typeof(Enums.PriorityLevel), num))
+                Enum.IsDefined(typeof(Enums.TicketPriority), num))
             {
-                priority = (Enums.PriorityLevel)num;
+                priority = (Enums.TicketPriority)num;
                 return true;
             }
 

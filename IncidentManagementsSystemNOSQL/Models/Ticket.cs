@@ -57,9 +57,6 @@ namespace IncidentManagementsSystemNOSQL.Models
 
         [BsonElement("Comments")]
         public List<TicketComment> Comments { get; set; } = new();
-        [BsonElement("Priority")]
-        public string Priority { get; set; } = null!;
-
     }
 
 }

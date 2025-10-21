@@ -20,11 +20,31 @@ namespace IncidentManagementsSystemNOSQL.Controllers
             _logger = logger;
         }
 
-        public IActionResult Index()
+        public IActionResult Index(string? priority)
         {
             try
             {
-                List<Ticket> tickets = _ticketService.GetAll();
+                List<Ticket> tickets;
+
+                if (!string.IsNullOrEmpty(priority))
+                {
+                    if (Enum.TryParse<TicketPriority>(priority, ignoreCase: true, out var priorityEnum))
+                    {
+                        tickets = _ticketService.GetByPriority(priorityEnum);
+                        ViewBag.SelectedPriority = priority;
+                    }
+                    else
+                    {
+                        tickets = _ticketService.GetAll();
+                        ViewBag.SelectedPriority = "all";
+                    }
+                }
+                else
+                {
+                    tickets = _ticketService.GetAll();
+                    ViewBag.SelectedPriority = "all";
+                }
+
                 return View(tickets);
             }
             catch (Exception ex)

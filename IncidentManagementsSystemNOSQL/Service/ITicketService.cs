@@ -7,6 +7,8 @@ namespace IncidentManagementsSystemNOSQL.Service
     public interface ITicketService
     {
         List<Ticket> GetAll();
+        List<Ticket> GetAllSortedByPriority(bool descending = true);
+        List<Ticket> GetByPriority(Enums.TicketPriority priority);
         Ticket? GetById(string id);
         List<Ticket> GetByUserId(string userId);
         List<Ticket> GetByStatus(Enums.TicketStatus status);
