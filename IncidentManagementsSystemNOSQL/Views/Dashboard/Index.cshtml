@@ -6,25 +6,27 @@
 @{
     ViewData["Title"] = "Service Desk Dashboard";
 
-    var statusCounts = ViewBag.StatusCounts as IDictionary<TicketStatus, int> ?? new Dictionary<TicketStatus, int>();
-    var statusPercentages = ViewBag.StatusPercentages as IDictionary<TicketStatus, double> ?? new Dictionary<TicketStatus, double>();
+    @* Efe Individual Part Filtering a preloaded list *@
 
-    int CountFor(TicketStatus key) => statusCounts.TryGetValue(key, out var value) ? value : 0;
-    double PercentFor(TicketStatus key) => statusPercentages.TryGetValue(key, out var value) ? value : 0;
+    IDictionary<TicketStatus, int> statusCounts = ViewBag.StatusCounts as IDictionary<TicketStatus, int> ?? new Dictionary<TicketStatus, int>();
+    IDictionary<TicketStatus, double> statusPercentages = ViewBag.StatusPercentages as IDictionary<TicketStatus, double> ?? new Dictionary<TicketStatus, double>();
 
-    var totalTickets = ViewBag.TotalTickets is int total ? total : 0;
-    var closedResolvedCount = CountFor(TicketStatus.closed_resolved);
-    var closedNoResolveCount = CountFor(TicketStatus.closed_no_resolve);
-    var closedTotalCount = closedResolvedCount + closedNoResolveCount;
+    int CountFor(TicketStatus key) => statusCounts.TryGetValue(key, out int value) ? value : 0;
+    double PercentFor(TicketStatus key) => statusPercentages.TryGetValue(key, out double value) ? value : 0;
+
+    int totalTickets = ViewBag.TotalTickets is int total ? total : 0;
+    int closedResolvedCount = CountFor(TicketStatus.closed_resolved);
+    int closedNoResolveCount = CountFor(TicketStatus.closed_no_resolve);
+    int closedTotalCount = closedResolvedCount + closedNoResolveCount;
     double closedPercent = totalTickets > 0 ? Math.Round((double)closedTotalCount / totalTickets * 100, 1) : 0;
 
-    var agentName = ViewBag.AgentName as string ?? string.Empty;
-    var agentId = ViewBag.AgentId as string ?? string.Empty;
-    var agentEmail = ViewBag.AgentEmail as string ?? string.Empty;
-    var hasAgentContext = ViewBag.HasAgentContext is bool flag && flag;
-    var agentTicketCount = ViewBag.AgentTicketCount is int myCount ? myCount : 0;
+    string agentName = ViewBag.AgentName as string ?? string.Empty;
+    string agentId = ViewBag.AgentId as string ?? string.Empty;
+    string agentEmail = ViewBag.AgentEmail as string ?? string.Empty;
+    bool hasAgentContext = ViewBag.HasAgentContext is bool flag && flag;
+    int agentTicketCount = ViewBag.AgentTicketCount is int myCount ? myCount : 0;
 
-    var assignedBlurb = hasAgentContext && !string.IsNullOrWhiteSpace(agentName)
+    string assignedBlurb = hasAgentContext && !string.IsNullOrWhiteSpace(agentName)
       ? $"Service desk queue for {agentName}."
       : "Monitor and manage all incident tickets in real-time";
 }
@@ -146,13 +148,13 @@
                 <select id="departmentFilter" class="form-select">
                     <option value="">All Departments</option>
                     @{
-                        // Correctly cast ViewBag.DepartmentCounts
-                        var departmentCounts = ViewBag.DepartmentCounts as IDictionary<DepartmentType, int>;
+                       
+                        IDictionary<DepartmentType, int>? departmentCounts = ViewBag.DepartmentCounts as IDictionary<DepartmentType, int>;
                     }
                     @if (departmentCounts != null)
                     {
-                        // Iterate directly over the keys
-                        foreach (var dept in departmentCounts.Keys)
+                      
+                        foreach (DepartmentType dept in departmentCounts.Keys)
                         {
                             <option value="@dept">@dept.ToString().Replace("_", " ")</option>
                         }
@@ -181,6 +183,12 @@
                 <div class="card-body p-0">
                     @if (Model != null && Model.Any())
                     {
+                        <div class="p-3 pb-0">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white">🔍</span>
+                                <input type="search" id="ticketsQuickFilter" class="form-control" placeholder="Quick filter tickets by keyword..." />
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover mb-0" id="ticketsTable">
                                 <thead>
@@ -196,9 +204,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var ticket in Model)
+                                    @foreach (Ticket ticket in Model)
                                     {
-                                        var statusString = ticket.Status.ToString();
+                                        string statusString = ticket.Status.ToString();
                                         <tr data-ticket-id="@ticket.TicketId"
                                                                   data-status="@statusString"
                                                                   data-department="@((ticket.Employee?.Department?.Name ?? "Unknown Department"))"
@@ -272,7 +280,7 @@
                                             <td>
                                                 @if (ticket.AssignedTo != null)
                                                 {
-                                                    var isMine = hasAgentContext && !string.IsNullOrWhiteSpace(agentId) && string.Equals(ticket.AssignedTo.EmployeeId, agentId, StringComparison.OrdinalIgnoreCase);
+                                                    bool isMine = hasAgentContext && !string.IsNullOrWhiteSpace(agentId) && string.Equals(ticket.AssignedTo.EmployeeId, agentId, StringComparison.OrdinalIgnoreCase);
                                                     <span class="badge-chip @(isMine ? "badge-chip-self" : string.Empty)">
                                                         👤 @ticket.AssignedTo.Name
                                                         @if (isMine)
@@ -339,11 +347,19 @@
         const statusFilter = document.getElementById('statusFilter');
         const departmentFilter = document.getElementById('departmentFilter');
         const assignedSwitch = document.getElementById('assignedSwitch');
+        const ticketsQuickFilter = document.getElementById('ticketsQuickFilter');
+        let quickFilterTimer;
 
         if (searchInput) searchInput.addEventListener('keyup', filterTable);
         if (statusFilter) statusFilter.addEventListener('change', filterTable);
         if (departmentFilter) departmentFilter.addEventListener('change', filterTable);
         if (assignedSwitch) assignedSwitch.addEventListener('change', filterTable);
+        if (ticketsQuickFilter) {
+            ticketsQuickFilter.addEventListener('input', () => {
+                clearTimeout(quickFilterTimer);
+                quickFilterTimer = setTimeout(filterTable, 120);
+            });
+        }
 
         function filterTable() {
             const table = document.getElementById('ticketsTable');
@@ -353,6 +369,7 @@
             const statusValue = statusFilter ? statusFilter.value.toLowerCase() : '';
             const departmentValue = departmentFilter ? departmentFilter.value.toLowerCase() : '';
             const showMineOnly = assignedSwitch ? assignedSwitch.checked : false;
+            const quickTerms = ticketsQuickFilter ? ticketsQuickFilter.value.toLowerCase().split(/\s+/).filter(Boolean) : [];
 
             const rows = table.getElementsByTagName('tr');
             let visibleCount = 0;
@@ -365,11 +382,12 @@
                 const text = row.textContent.toLowerCase();
 
                 const matchesSearch = text.includes(searchValue);
+                const matchesQuick = quickTerms.length === 0 || quickTerms.every(term => text.includes(term));
                 const matchesStatus = statusValue === '' || status === statusValue;
                 const matchesDepartment = departmentValue === '' || department === departmentValue;
                 const matchesAssigned = !showMineOnly || assignedState === 'mine';
 
-                if (matchesSearch && matchesStatus && matchesDepartment && matchesAssigned) {
+                if (matchesSearch && matchesQuick && matchesStatus && matchesDepartment && matchesAssigned) {
                     row.style.display = '';
                     visibleCount++;
                 } else {

@@ -113,8 +113,24 @@
 			<div class="card-body p-0">
 				@if (dashboard.Tickets != null && dashboard.Tickets.Any())
 				{
+					<div class="p-3 pb-0">
+						<div class="row g-2">
+							<div class="col-md-6">
+								<div class="input-group">
+									<span class="input-group-text bg-white">🔍</span>
+									<input type="search" id="employeeTicketsSearch" class="form-control" placeholder="Search tickets by id, title, or assignee..." />
+								</div>
+							</div>
+							<div class="col-md-6">
+								<div class="input-group">
+									<span class="input-group-text bg-white">🔍</span>
+									<input type="search" id="employeeTicketsFilter" class="form-control" placeholder="Filter tickets by keyword" />
+								</div>
+							</div>
+						</div>
+					</div>
 					<div class="table-responsive">
-						<table class="table table-hover mb-0">
+						<table class="table table-hover mb-0" id="employeeTicketsTable">
 							<thead>
 								<tr>
 									<th style="width: 120px;">Ticket ID</th>
@@ -228,8 +244,58 @@
 		</div>
 	}
 </div>
-
+@* Efe Individual Part Filtering a preloaded list *@
 @section Scripts {
+		<script>
+			(function () {
+				const searchInput = document.getElementById('employeeTicketsSearch');
+				const filterInput = document.getElementById('employeeTicketsFilter');
+				const tableBody = document.querySelector('#employeeTicketsTable tbody');
+				const ticketBadge = document.querySelector('.tickets-card .badge.bg-primary');
+				if (!tableBody) {
+					return;
+				}
+
+				const rows = Array.from(tableBody.querySelectorAll('tr'));
+				const normalize = (value) => value.toLowerCase();
+
+				const applyFilter = () => {
+					const searchValue = searchInput ? normalize(searchInput.value) : '';
+					const rawTerms = filterInput ? normalize(filterInput.value).split(/\s+/).filter(Boolean) : [];
+					let visibleCount = 0;
+
+					rows.forEach(row => {
+						const text = normalize(row.innerText);
+						const matchesSearch = searchValue.length === 0 || text.includes(searchValue);
+						const matchesKeywords = rawTerms.length === 0 || rawTerms.every(term => text.includes(term));
+						const isVisible = matchesSearch && matchesKeywords;
+						row.hidden = !isVisible;
+						if (isVisible) {
+							visibleCount++;
+						}
+					});
+
+					if (ticketBadge) {
+						ticketBadge.textContent = visibleCount + ' shown';
+					}
+				};
+
+				let debounceTimer;
+				const triggerFilter = () => {
+					clearTimeout(debounceTimer);
+					debounceTimer = setTimeout(applyFilter, 120);
+				};
+
+				if (searchInput) {
+					searchInput.addEventListener('input', triggerFilter);
+				}
+				if (filterInput) {
+					filterInput.addEventListener('input', triggerFilter);
+				}
+
+				applyFilter();
+			})();
+		</script>
 	@{
 		await Html.RenderPartialAsync("_ValidationScriptsPartial");
 	}
