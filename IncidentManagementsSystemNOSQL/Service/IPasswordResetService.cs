@@ -1,8 +1,9 @@
-﻿namespace IncidentManagementsSystemNOSQL.Service
+﻿
+namespace IncidentManagementsSystemNOSQL.Service
 {
     public interface IPasswordResetService
     {
-        void IssueTokenByUsername(string username, string requestIp);
+        Task IssueTokenByUsername(string username, string requestIp, CancellationToken ct = default);
         bool ResetPassword(string userId, string rawToken, string newPassword);
     }
 }

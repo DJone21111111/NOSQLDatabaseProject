@@ -1,5 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using IncidentManagementsSystemNOSQL.Models.ViewModels;
 using IncidentManagementsSystemNOSQL.Repositories;
 
@@ -21,10 +23,10 @@ namespace IncidentManagementsSystemNOSQL.Service
             _users = users; _tokens = tokens; _email = email; _cfg = cfg;
         }
 
-        public void IssueTokenByUsername(string username, string requestIp)
+        public async Task IssueTokenByUsername(string username, string requestIp, CancellationToken ct = default)
         {
             var user = _users.GetByUsername(username.Trim());
-            if (user == null) { System.Threading.Thread.Sleep(50); return; }
+            if (user == null) { await Task.Delay(50, ct); return; }
 
             _tokens.MarkAllActiveAsUsed(user.Id);
 
@@ -51,7 +53,7 @@ namespace IncidentManagementsSystemNOSQL.Service
 <p><a href=""{link}"">{link}</a></p>
 <p>This link expires in {ttlMin} minutes. If you didn't request it, you can ignore this email.</p>";
 
-            _ = Task.Run(() => _email.Send(user.Email, subject, body));
+            await _email.Send(user.Email, subject, body, ct);
         }
 
         public bool ResetPassword(string userId, string rawToken, string newPassword)

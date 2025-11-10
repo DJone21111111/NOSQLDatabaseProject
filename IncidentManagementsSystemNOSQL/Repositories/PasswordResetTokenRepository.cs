@@ -1,6 +1,5 @@
 ﻿using IncidentManagementsSystemNOSQL.Models;
 using IncidentManagementsSystemNOSQL.Models.ViewModels;
-using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -10,10 +9,8 @@ namespace IncidentManagementsSystemNOSQL.Repositories
     {
         private readonly IMongoCollection<PasswordResetToken> _col;
 
-        public PasswordResetTokenRepository(IOptions<MongoDbSettings> options)
+        public PasswordResetTokenRepository(IMongoDatabase db)
         {
-            var client = new MongoClient(options.Value.ConnectionString);
-            var db = client.GetDatabase(options.Value.DatabaseName);
             _col = db.GetCollection<PasswordResetToken>("password_reset_tokens");
         }
 
