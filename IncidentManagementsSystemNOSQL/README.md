@@ -18,6 +18,7 @@ They are taken to the Forgot Password page, where they enter their username
 No matter what username is entered, the system always displays the same confirmation message:
 
 “If the username exists, we have sent a reset link.”
+# Your email was added to the Database so you should receive the reset link.
 
 This protects user privacy.
 
@@ -262,3 +263,56 @@ Persistence: Selected filter persists across page refreshes via URL parameter
 - Employee script: Views/Employee/Index.cshtml — self‑invoking function wiring inputs and applyFilter().
 - Row attributes (Dashboard): data-status, data-department, data-assigned-state added in the <tbody> foreach.
 - Badge selectors: #ticketCount (Dashboard), .tickets-card .badge.bg-primary (Employee).
+
+# ...................................................................................................................................................................
+
+# Student Name: Luwana Meleiane
+# Student Number: 728287
+
+
+Transfer Ticket Feature – Detailed Explanation
+1. Purpose of the Feature
+The Transfer Ticket feature allows service desk agents to reassign an existing incident ticket to another team member. This is useful during shift changes, escalation, or when a different team member is better suited to handle the issue.
+2. When the Feature Is Used
+•	When a ticket must be reassigned to a new agent (e.g., Lily Mitchell).
+•	When the current assignee is unavailable.
+•	When the issue requires escalation or a different skill set.
+•	When workload needs balancing across the service desk.
+3. User Interface Flow
+1.	User opens the Transfer Ticket form.
+2.	User enters the Ticket ID.
+3.	User selects a new assignee from the dropdown list.
+4.	User clicks the 'Transfer' button.
+5.	The system shows a success or error message based on the result.
+4. Controller Flow Explanation
+The TransferTicketController handles all user interactions for this feature. It collects input from the user (Ticket ID and new assignee) and sends the information to the TicketService. The controller waits for a true/false response to determine whether the transfer was successful.
+5. Service Layer Flow (Main Logic)
+The TicketService contains the main logic for transferring a ticket. Its method 'transferTicket(ticketId, newAssignee)' performs the following steps:
+•	Fetches the ticket by ID from MongoDB using the repository.
+•	If the ticket does not exist, it returns false.
+•	If found, it updates the 'assignedTo' field.
+•	It updates the 'lastUpdated' timestamp to the current date/time.
+•	It saves the updated ticket back into MongoDB.
+•	Returns true to indicate success.
+6. Repository Layer Flow
+The repository interacts directly with MongoDB. It locates the ticket document using its ID and replaces it with the updated version. This ensures that only the required fields are updated without modifying the rest of the ticket data.
+7. Database Behavior (MongoDB)
+•	Only 'assignedTo' and 'lastUpdated' fields change.
+•	Fields such as title, description, priority, status, and createdAt remain the same.
+•	The update is performed using MongoDB's replaceOne() on the ticket document.
+8. Importance of the Feature
+•	Supports workflow flexibility and smooth handovers.
+•	Enables escalation processes.
+•	Improves audit tracking with accurate timestamps.
+•	Demonstrates correct MVC architecture separation.
+9. Transfer Ticket Feature – Full Flow Summary
+6.	User clicks 'Transfer Ticket'.
+7.	Controller receives Ticket ID and new assignee.
+8.	Controller calls TicketService.transferTicket().
+9.	TicketService fetches and updates the ticket.
+10.	Repository saves changes to MongoDB.
+11.	Controller displays success or error alert.
+
+
+
+# Here is the link to my GitHub repository: 
